@@ -37,7 +37,7 @@ def __make_default_config(loggers):
     return config
 
 
-def create_logger(logger_name):
+def __create_logger(logger_name):
     logger = logging.getLogger(logger_name)
 
     msg_format = ''
