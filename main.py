@@ -7,6 +7,20 @@ import configparser
 import hashlib
 
 
+def __get_list_filepaths(path, filepaths):
+    if os.path.isfile(path):
+        filepaths.append(path)
+    else:
+        for name in os.listdir(path):
+            filepath = os.path.join(path, name)
+            if os.path.isfile(filepath):
+                filepaths.append(filepath)
+            else:
+                filepaths = __get_list_filepaths(filepath, filepaths)
+
+    return filepaths
+
+
 def __get_file_hashsum(path):
     hash = hashlib.md5()
     with open(path, 'rb') as f:
