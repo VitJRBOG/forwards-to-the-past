@@ -1,7 +1,40 @@
 # coding: utf-8
 
 import os
+import sys
 import logging
+import configparser
+
+
+def get_config(loggers):
+    config = configparser.ConfigParser()
+
+    if os.path.isfile('config.ini'):
+        config.read('config.ini')
+    else:
+        config = __make_default_config(loggers)
+
+    return config
+
+
+def __make_default_config(loggers):
+    config = configparser.ConfigParser()
+
+    try:
+        config['General'] = {
+            'path_to_files': '',
+            'path_to_backup': ''
+        }
+
+        with open('config.ini', 'w') as f:
+            config.write(f)
+        loggers['info'].info(
+            'File "config.ini" was created with default values')
+    except Exception:
+        loggers['critical'].exception()
+        sys.exit()
+
+    return config
 
 
 def create_logger(logger_name):
