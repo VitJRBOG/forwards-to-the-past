@@ -4,6 +4,15 @@ import os
 import sys
 import logging
 import configparser
+import hashlib
+
+
+def __get_file_hashsum(path):
+    hash = hashlib.md5()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(128 * hash.block_size), b''):
+            hash.update(chunk)
+    return hash.hexdigest()
 
 
 def get_config(loggers):
