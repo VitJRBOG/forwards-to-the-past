@@ -6,6 +6,20 @@ import logging
 import configparser
 import hashlib
 import datetime
+import shutil
+
+
+def __copy_file(loggers, path, hashsum, config):
+    backup_path = ''
+
+    try:
+        backup_path = config['General']['path_to_backup'] + hashsum
+        shutil.copyfile(path, backup_path)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return backup_path
 
 
 def __get_list_filepaths(loggers, path, filepaths):
