@@ -7,7 +7,9 @@ import configparser
 import hashlib
 
 
-def __get_list_filepaths(path, filepaths):
+def __get_list_filepaths(loggers, path, filepaths):
+
+    try:
     if os.path.isfile(path):
         filepaths.append(path)
     else:
@@ -16,26 +18,39 @@ def __get_list_filepaths(path, filepaths):
             if os.path.isfile(filepath):
                 filepaths.append(filepath)
             else:
-                filepaths = __get_list_filepaths(filepath, filepaths)
+                    filepaths = __get_list_filepaths(
+                        loggers, filepath, filepaths)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
 
     return filepaths
 
 
-def __get_file_hashsum(path):
+def __get_file_hashsum(loggers, path):
     hash = hashlib.md5()
+    try:
     with open(path, 'rb') as f:
         for chunk in iter(lambda: f.read(128 * hash.block_size), b''):
             hash.update(chunk)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
     return hash.hexdigest()
 
 
 def get_config(loggers):
     config = configparser.ConfigParser()
 
+    try:
     if os.path.isfile('config.ini'):
         config.read('config.ini')
     else:
         config = __make_default_config(loggers)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
 
     return config
 
@@ -57,7 +72,7 @@ def __make_default_config(loggers):
         loggers['info'].info(
             'File "config.ini" was created with default values')
     except Exception:
-        loggers['critical'].exception()
+        loggers['critical'].exception('Program is terminated')
         sys.exit()
 
     return config
