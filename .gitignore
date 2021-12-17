@@ -1,3 +1,5 @@
+.DS_Store
 log.log
 config.ini
 junk/
+pull-to-pc.sh
