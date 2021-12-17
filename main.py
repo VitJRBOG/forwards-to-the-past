@@ -48,6 +48,9 @@ def __make_default_config(loggers):
             'path_to_files': '',
             'path_to_backup': ''
         }
+        config['DataBase'] = {
+            'path_to_db': 'dbase.db'
+        }
 
         with open('config.ini', 'w') as f:
             config.write(f)
