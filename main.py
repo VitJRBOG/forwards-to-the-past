@@ -5,6 +5,7 @@ import sys
 import logging
 import configparser
 import hashlib
+import datetime
 
 
 def __get_list_filepaths(loggers, path, filepaths):
@@ -38,6 +39,18 @@ def __get_file_hashsum(loggers, path):
         sys.exit()
 
     return hash.hexdigest()
+
+
+def __get_file_date_modification(loggers, path):
+    modification_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        modification_date = os.path.getatime(path)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return modification_date
 
 
 def get_config(loggers):
