@@ -2,7 +2,6 @@
 
 import os
 import sys
-import configparser
 import hashlib
 import datetime
 import shutil
@@ -22,19 +21,6 @@ def files_processing(loggers, config):
             backup_path = __copy_file(loggers, path, hashsum, config)
             file = db.File(hashsum, path, backup_path, modification_date)
             db.insert_into_file(loggers, con, file)
-
-
-def __copy_file(loggers, path, hashsum, config):
-    backup_path = ''
-
-    try:
-        backup_path = config['General']['path_to_backup'] + hashsum
-        shutil.copyfile(path, backup_path)
-    except Exception:
-        loggers['critical'].exception('Program is terminated')
-        sys.exit()
-
-    return backup_path
 
 
 def __get_list_filepaths(loggers, path, filepaths):
@@ -82,41 +68,14 @@ def __get_file_date_modification(loggers, path):
     return modification_date
 
 
-def get_config(loggers):
-    config = configparser.ConfigParser()
+def __copy_file(loggers, path, hashsum, config):
+    backup_path = ''
 
     try:
-        if os.path.isfile('config.ini'):
-            config.read('config.ini')
-        else:
-            config = __make_default_config(loggers)
+        backup_path = config['General']['path_to_backup'] + hashsum
+        shutil.copyfile(path, backup_path)
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
 
-    return config
-
-
-def __make_default_config(loggers):
-    config = configparser.ConfigParser()
-
-    try:
-        config['General'] = {
-            'path_to_files': '',
-            'path_to_backup': '',
-            'checking_interval': 300
-        }
-        config['DataBase'] = {
-            'path_to_db': 'dbase.db',
-            'file_retention_period': 30
-        }
-
-        with open('config.ini', 'w') as f:
-            config.write(f)
-        loggers['info'].info(
-            'File "config.ini" was created with default values')
-    except Exception:
-        loggers['critical'].exception('Program is terminated')
-        sys.exit()
-
-    return config
+    return backup_path
