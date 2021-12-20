@@ -1,5 +1,13 @@
+# OS files
 .DS_Store
+
+# Python cache files
+__pycache__
+
+# Project derivatives
+junk/
 log.log
 config.ini
-junk/
+
+# Other junk
 pull-to-pc.sh
