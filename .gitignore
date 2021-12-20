@@ -1,6 +1,9 @@
 # OS files
 .DS_Store
 
+# VS Code files
+.vscode/
+
 # Python cache files
 __pycache__
 
