@@ -88,10 +88,12 @@ def __make_default_config(loggers):
     try:
         config['General'] = {
             'path_to_files': '',
-            'path_to_backup': ''
+            'path_to_backup': '',
+            'checking_interval': 300
         }
         config['DataBase'] = {
-            'path_to_db': 'dbase.db'
+            'path_to_db': 'dbase.db',
+            'file_retention_period': 30
         }
 
         with open('config.ini', 'w') as f:
