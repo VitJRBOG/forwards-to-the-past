@@ -5,22 +5,53 @@ import sys
 import hashlib
 import datetime
 import shutil
+import pytz
 
 import db
 
 
 def files_processing(loggers, config):
+    con = db.connect(loggers, config)
     filepaths = __get_list_filepaths(
         loggers, config['General']['path_to_files'], [])
+
+    changes = []
     for path in filepaths:
         hashsum = __get_file_hashsum(loggers, path)
-        con = db.connect(loggers, config)
-        noted_files = db.select_file_by_hashsum(loggers, con, hashsum)
-        if len(noted_files) == 0:
-            modification_date = __get_file_date_modification(loggers, path)
-            backup_path = __copy_file(loggers, path, hashsum, config)
-            file = db.File(hashsum, path, backup_path, modification_date)
-            db.insert_into_file(loggers, con, file)
+
+        if not os.path.isfile(config['General']['path_to_backup'] + str(hashsum)):
+            changes.append(path)
+
+    if len(changes) > 0:
+        table_name = __get_table_name(loggers, config)
+        db.create_table(loggers, con, table_name, ['hashsum', 'path'])
+
+        for path in filepaths:
+            hashsum = __get_file_hashsum(loggers, path)
+            saving_backup_files(loggers, config, con,
+                                table_name, path, hashsum)
+            if path in changes:
+                loggers['info'].info(
+                    'File {} was saved as {}'.format(path, hashsum))
+
+
+def saving_backup_files(loggers, config, con, table_name, path, hashsum):
+    file = db.File(hashsum, path)
+    db.insert_into_table(loggers, con, table_name, file)
+    __copy_file(loggers, path, hashsum, config)
+
+
+def __get_table_name(loggers, config):
+    backup_date = __get_backup_date(loggers, config)
+    return backup_date.timestamp()
+
+
+def __get_backup_date(loggers, config):
+    tz = pytz.timezone(config['General']['timezone'])
+    if tz == '':
+        tz = None
+    backup_date = datetime.datetime.now(tz=tz)
+    return backup_date
 
 
 def __get_list_filepaths(loggers, path, filepaths):
@@ -56,26 +87,10 @@ def __get_file_hashsum(loggers, path):
     return hash.hexdigest()
 
 
-def __get_file_date_modification(loggers, path):
-    modification_date = datetime.datetime(1970, 1, 1)
-
-    try:
-        modification_date = os.path.getatime(path)
-    except Exception:
-        loggers['critical'].exception('Program is terminated')
-        sys.exit()
-
-    return modification_date
-
-
 def __copy_file(loggers, path, hashsum, config):
-    backup_path = ''
-
     try:
         backup_path = config['General']['path_to_backup'] + hashsum
         shutil.copyfile(path, backup_path)
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
-
-    return backup_path
