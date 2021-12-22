@@ -2,8 +2,12 @@
 
 import os
 import logging
+import queue
+import time
 
+import cfg
 import gui
+import core
 
 
 def __main():
@@ -19,7 +23,14 @@ def __main():
 
 
 def __run(loggers):
-    gui.show_gui(loggers)
+    config = cfg.get_config(loggers)
+    if config['GUI']['show_gui'] == '1':
+        gui.show_gui(loggers)
+    else:
+        while True:
+            q = queue.Queue()
+            core.files_processing(loggers, q)
+            time.sleep(float(config['General']['checking_interval']))
 
 
 def __create_logger(logger_name):

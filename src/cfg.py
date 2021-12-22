@@ -34,6 +34,9 @@ def __make_default_config(loggers):
             'path_to_db': 'dbase.db',
             'file_retention_period': 30
         }
+        config['GUI'] = {
+            'show_gui': 1
+        }
 
         with open('config.ini', 'w') as f:
             config.write(f)
