@@ -7,25 +7,31 @@ import datetime
 import shutil
 import pytz
 
+import cfg
 import db
 
 
-def files_processing(loggers, config):
+def files_processing(loggers, q):
+    config = cfg.get_config(loggers)
+
     con = db.connect(loggers, config)
     filepaths = __get_list_filepaths(
         loggers, config['General']['path_to_files'], [])
 
+    progress_share = 50 / len(filepaths)
     changes = []
     for path in filepaths:
         hashsum = __get_file_hashsum(loggers, path)
 
         if not os.path.isfile(config['General']['path_to_backup'] + str(hashsum)):
             changes.append(path)
+        q.put(progress_share, block=False, timeout=None)
 
     if len(changes) > 0:
         table_name = __get_table_name(loggers, config)
         db.create_table(loggers, con, table_name, ['hashsum', 'path'])
 
+        progress_share = 50 / len(changes)
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
             saving_backup_files(loggers, config, con,
@@ -33,6 +39,10 @@ def files_processing(loggers, config):
             if path in changes:
                 loggers['info'].info(
                     'File {} was saved as {}'.format(path, hashsum))
+                q.put(progress_share, block=False, timeout=None)
+    else:
+        progress_share = 100
+        q.put(progress_share, block=False, timeout=None)
 
 
 def saving_backup_files(loggers, config, con, table_name, path, hashsum):

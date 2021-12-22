@@ -2,10 +2,8 @@
 
 import os
 import logging
-import time
 
-import cfg
-import core
+import gui
 
 
 def __main():
@@ -21,11 +19,7 @@ def __main():
 
 
 def __run(loggers):
-    while True:
-        config = cfg.get_config(loggers)
-        core.files_processing(loggers, config)
-
-        time.sleep(float(config['General']['checking_interval']))
+    gui.show_gui(loggers)
 
 
 def __create_logger(logger_name):
