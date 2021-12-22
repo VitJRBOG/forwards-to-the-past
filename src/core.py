@@ -59,7 +59,7 @@ def __get_table_name(loggers, config):
 def __get_backup_date(loggers, config):
     tz = pytz.timezone(config['General']['timezone'])
     if tz == '':
-        tz = None
+        tz = pytz.timezone('UTC')
     backup_date = datetime.datetime.now(tz=tz)
     return backup_date
 
