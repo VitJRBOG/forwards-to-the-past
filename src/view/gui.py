@@ -5,7 +5,7 @@ import tkinter.ttk
 import queue
 import threading
 
-import core
+import controller.core as core
 
 
 def show_gui(loggers):

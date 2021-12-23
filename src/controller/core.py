@@ -7,8 +7,8 @@ import datetime
 import shutil
 import pytz
 
-import cfg
-import db
+import model.cfg as cfg
+import model.db as db
 
 
 def files_processing(loggers, q):

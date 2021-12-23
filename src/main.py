@@ -5,9 +5,9 @@ import logging
 import queue
 import time
 
-import cfg
-import gui
-import core
+import model.cfg as cfg
+import view.gui as gui
+import controller.core as core
 
 
 def __main():
