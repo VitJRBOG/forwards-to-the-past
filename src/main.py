@@ -2,11 +2,7 @@
 
 import os
 import logging
-import queue
-import time
 
-import model.cfg as cfg
-import view.gui as gui
 import controller.core as core
 
 
@@ -19,18 +15,7 @@ def __main():
     }
     loggers['info'].info('Program was started')
 
-    __run(loggers)
-
-
-def __run(loggers):
-    config = cfg.get_config(loggers)
-    if config['GUI']['show_gui'] == '1':
-        gui.show_gui(loggers)
-    else:
-        while True:
-            q = queue.Queue()
-            core.files_processing(loggers, q)
-            time.sleep(float(config['General']['checking_interval']))
+    core.run(loggers)
 
 
 def __create_logger(logger_name):

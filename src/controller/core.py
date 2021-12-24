@@ -2,19 +2,74 @@
 
 import os
 import sys
+import queue
+import time
 import hashlib
 import datetime
 import shutil
 import pytz
 
-import model.cfg as cfg
-import model.db as db
+import src.view.main_window as main_window
+import src.view.general_frame as general_frame
+import src.model.cfg as cfg
+import src.model.db as db
 
 
-def files_processing(loggers, q):
+def run(loggers):
+    config = cfg.get_config(loggers)
+    db_con = db.connect(loggers, config)
+    if config['GUI']['show_gui'] == '1':
+        __show_gui(loggers, db_con)
+    else:
+        q = queue.Queue()
+        files_processing(loggers, db_con, q)
+        time.sleep(float(config['General']['checking_interval']))
+
+        return run(loggers)
+
+
+def __show_gui(loggers, db_con):
+    app = main_window.MainWindow()
+
+    q = queue.Queue()
+    g_frame = general_frame.GeneralFrame(
+        app, files_processing, (loggers, db_con, q,))
+
+    __compose_backups_dates(loggers, g_frame, db_con)
+
+    app.mainloop()
+
+
+def __compose_backups_dates(loggers, g_frame, db_con):
+    tables = db.select_tables(loggers, db_con)
+
+    oldest_backup_date = 0.0
+    for i, table_name in enumerate(tables):
+        if i == 0:
+            oldest_backup_date = float(table_name)
+            continue
+
+        if float(table_name) < oldest_backup_date:
+            oldest_backup_date = float(table_name)
+    g_frame.set_oldest_backup_date(
+        datetime.datetime.fromtimestamp(float(oldest_backup_date)))
+
+    latest_backup_date = 0.0
+    for i, table_name in enumerate(tables):
+        if i == 0:
+            latest_backup_date = float(table_name)
+
+        if latest_backup_date < float(table_name):
+            latest_backup_date = float(table_name)
+    g_frame.set_latest_backup_date(
+        datetime.datetime.fromtimestamp(float(latest_backup_date)))
+
+    g_frame.set_next_backup_date()
+
+
+def files_processing(loggers, db_con, q):
     config = cfg.get_config(loggers)
 
-    con = db.connect(loggers, config)
     filepaths = __get_list_filepaths(
         loggers, config['General']['path_to_files'], [])
 
@@ -29,12 +84,12 @@ def files_processing(loggers, q):
 
     if len(changes) > 0:
         table_name = __get_table_name(loggers, config)
-        db.create_table(loggers, con, table_name, ['hashsum', 'path'])
+        db.create_table(loggers, db_con, table_name, ['hashsum', 'path'])
 
         progress_share = 50 / len(changes)
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
-            saving_backup_files(loggers, config, con,
+            saving_backup_files(loggers, config, db_con,
                                 table_name, path, hashsum)
             if path in changes:
                 loggers['info'].info(

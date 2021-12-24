@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os
+import queue
 import sys
 import sqlite3
 
@@ -66,6 +67,23 @@ def select_file_by_hashsum(loggers, con, hashsum):
         sys.exit()
 
     return files
+
+
+def select_tables(loggers, con):
+    tables = []
+
+    try:
+        cur = con.cursor()
+
+        query = 'SELECT name FROM sqlite_master WHERE type="table"'
+
+        for row in cur.execute(query):
+            tables.append(row[0])
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return tables
 
 
 def __parse_row(loggers, row):
