@@ -2,17 +2,18 @@
 
 import tkinter as tk
 import datetime
+import threading
 
 
 class GeneralFrame(tk.Canvas):
-    def __init__(self, master, run_backup_func, func_args):
+    def __init__(self, master, func, func_args):
         super().__init__(master)
 
         self.oldest_backup_date = make_label(self, coordinates=(0, 30))
         self.latest_backup_date = make_label(self, coordinates=(0, 50))
         self.next_backup_date = make_label(self, coordinates=(0, 70))
 
-        make_button(master, run_backup_func, func_args, (200, 100))
+        make_button(self, func, func_args, (150, 100))
 
         self.pack()
 
@@ -50,7 +51,13 @@ def make_label(master, coordinates):
     return text_variable
 
 
-def make_button(master, run_backup_func, func_args, coordinates):
+def make_button(master, func, func_args, coordinates):
+    a = []
+    for item in func_args:
+        a.append(item)
+    a.append(master)
     button = tk.Button(master, text='Запустить сейчас',
-                       command=lambda: run_backup_func(*func_args))
+                       command=lambda: threading.Thread(target=func,
+                                                        args=(a),
+                                                        daemon=True).start())
     button.place(x=coordinates[0], y=coordinates[1])

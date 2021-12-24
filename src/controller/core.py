@@ -9,10 +9,10 @@ import datetime
 import shutil
 import pytz
 
-import src.view.main_window as main_window
-import src.view.general_frame as general_frame
 import src.model.cfg as cfg
 import src.model.db as db
+import src.view.main_window as main_window
+import src.view.general_frame as general_frame
 
 
 def run(loggers):
@@ -31,40 +31,30 @@ def run(loggers):
 def __show_gui(loggers, db_con):
     app = main_window.MainWindow()
 
-    q = queue.Queue()
     g_frame = general_frame.GeneralFrame(
-        app, files_processing, (loggers, db_con, q,))
-
-    __compose_backups_dates(loggers, g_frame, db_con)
+        app, start_backing_up, (loggers,))
+    update_backup_date_labels(loggers, g_frame, db_con)
 
     app.mainloop()
 
 
-def __compose_backups_dates(loggers, g_frame, db_con):
-    tables = db.select_tables(loggers, db_con)
-
-    oldest_backup_date = 0.0
-    for i, table_name in enumerate(tables):
-        if i == 0:
-            oldest_backup_date = float(table_name)
-            continue
-
-        if float(table_name) < oldest_backup_date:
-            oldest_backup_date = float(table_name)
-    g_frame.set_oldest_backup_date(
-        datetime.datetime.fromtimestamp(float(oldest_backup_date)))
-
-    latest_backup_date = 0.0
-    for i, table_name in enumerate(tables):
-        if i == 0:
-            latest_backup_date = float(table_name)
-
-        if latest_backup_date < float(table_name):
-            latest_backup_date = float(table_name)
-    g_frame.set_latest_backup_date(
-        datetime.datetime.fromtimestamp(float(latest_backup_date)))
-
+def update_backup_date_labels(loggers, g_frame, db_con):
+    backup_dates = compose_backups_dates(loggers, db_con)
+    g_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
+    g_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
     g_frame.set_next_backup_date()
+
+
+def start_backing_up(loggers, g_frame):
+    config = cfg.get_config(loggers)
+    db_con = db.connect(loggers, config)
+
+    q = queue.Queue()
+
+    files_processing(loggers, db_con, q)
+    update_backup_date_labels(loggers, g_frame, db_con)
+
+    db_con.close()
 
 
 def files_processing(loggers, db_con, q):
@@ -159,3 +149,37 @@ def __copy_file(loggers, path, hashsum, config):
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
+
+
+def compose_backups_dates(loggers, db_con):
+    backup_dates = {}
+
+    try:
+        tables = db.select_tables(loggers, db_con)
+
+        oldest_backup_date = 0.0
+        for i, table_name in enumerate(tables):
+            if i == 0:
+                oldest_backup_date = float(table_name)
+                continue
+
+            if float(table_name) < oldest_backup_date:
+                oldest_backup_date = float(table_name)
+        backup_dates['oldest_backup_date'] = datetime.datetime.fromtimestamp(
+            float(oldest_backup_date))
+
+        latest_backup_date = 0.0
+        for i, table_name in enumerate(tables):
+            if i == 0:
+                latest_backup_date = float(table_name)
+
+            if latest_backup_date < float(table_name):
+                latest_backup_date = float(table_name)
+        backup_dates['latest_backup_date'] = datetime.datetime.fromtimestamp(
+            float(latest_backup_date))
+
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return backup_dates
