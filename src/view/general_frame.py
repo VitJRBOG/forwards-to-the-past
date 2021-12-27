@@ -35,7 +35,7 @@ class GeneralFrame(tk.Canvas):
 
     def set_next_backup_date(self, date=datetime.datetime(1970, 1, 1)):
         text = ''
-        if date != datetime.datetime(1970, 1, 1):
+        if date > datetime.datetime(1971, 1, 1):
             text = date.strftime('%d.%m.%Y %H:%M')
         else:
             text = 'автоматическое копирование отключено'

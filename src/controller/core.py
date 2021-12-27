@@ -42,7 +42,7 @@ def update_backup_date_labels(loggers, g_frame, db_con):
     backup_dates = compose_backups_dates(loggers, db_con)
     g_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
     g_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
-    g_frame.set_next_backup_date()
+    g_frame.set_next_backup_date(backup_dates['next_backup_date'])
 
 
 def start_backing_up(loggers, g_frame):
@@ -176,6 +176,11 @@ def compose_backups_dates(loggers, db_con):
                 latest_backup_date = float(table_name)
         backup_dates['latest_backup_date'] = datetime.datetime.fromtimestamp(
             float(latest_backup_date))
+
+        config = cfg.get_config(loggers)
+        backup_dates['next_backup_date'] = backup_dates['latest_backup_date'] + \
+            datetime.timedelta(
+                days=float(config['General']['checking_interval']))
 
     except Exception:
         loggers['critical'].exception('Program is terminated')
