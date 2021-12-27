@@ -195,17 +195,17 @@ def __compute_oldest_backup_date(loggers, tables=None, db_con=None):
                 db_con = db.connect(loggers)
             tables = db.select_tables(loggers, db_con)
 
-        oldest_backup_date = 0.0
+        oldest = 0.0
         for i, table_name in enumerate(tables):
             if i == 0:
-                oldest_backup_date = float(table_name)
+                oldest = float(table_name)
                 continue
 
-            if float(table_name) < oldest_backup_date:
-                oldest_backup_date = float(table_name)
+            if float(table_name) < oldest:
+                oldest = float(table_name)
 
         oldest_backup_date = datetime.datetime.fromtimestamp(
-            float(oldest_backup_date))
+            float(oldest))
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
@@ -222,16 +222,16 @@ def __compute_latest_backup_date(loggers, tables=None, db_con=None):
                 db_con = db.connect(loggers)
             tables = db.select_tables(loggers, db_con)
 
-        latest_backup_date = 0.0
+        latest = 0.0
         for i, table_name in enumerate(tables):
             if i == 0:
-                latest_backup_date = float(table_name)
+                latest = float(table_name)
 
-            if latest_backup_date < float(table_name):
-                latest_backup_date = float(table_name)
+            if latest < float(table_name):
+                latest = float(table_name)
 
         latest_backup_date = datetime.datetime.fromtimestamp(
-            float(latest_backup_date))
+            float(latest))
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
