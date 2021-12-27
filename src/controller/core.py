@@ -17,7 +17,7 @@ import src.view.general_frame as general_frame
 
 def run(loggers):
     config = cfg.get_config(loggers)
-    db_con = db.connect(loggers, config)
+    db_con = db.connect(loggers)
     if config['GUI']['show_gui'] == '1':
         __show_gui(loggers, db_con)
     else:
@@ -46,8 +46,7 @@ def update_backup_date_labels(loggers, g_frame, db_con):
 
 
 def start_backing_up(loggers, g_frame):
-    config = cfg.get_config(loggers)
-    db_con = db.connect(loggers, config)
+    db_con = db.connect(loggers)
 
     q = queue.Queue()
 

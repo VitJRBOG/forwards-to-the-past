@@ -1,9 +1,10 @@
 # coding: utf-8
 
 import os
-import queue
 import sys
 import sqlite3
+
+import src.model.cfg as cfg
 
 
 class File:
@@ -15,8 +16,10 @@ class File:
         self.path = path
 
 
-def connect(loggers, config):
+def connect(loggers):
     con = sqlite3.connect('')
+
+    config = cfg.get_config(loggers)
 
     try:
         if not os.path.isfile(config['DataBase']['path_to_db']):
