@@ -2,6 +2,7 @@
 
 import os
 import sys
+import threading
 import queue
 import time
 import hashlib
@@ -21,11 +22,7 @@ def run(loggers):
     if config['GUI']['show_gui'] == '1':
         __show_gui(loggers, db_con)
     else:
-        q = queue.Queue()
-        files_processing(loggers, db_con, q)
-        time.sleep(float(config['General']['backup_interval']) * 86400)
-
-        return run(loggers)
+        checking_for_backup_date(loggers)
 
 
 def __show_gui(loggers, db_con):
@@ -35,7 +32,22 @@ def __show_gui(loggers, db_con):
         app, start_backing_up, (loggers,))
     update_backup_date_labels(loggers, g_frame, db_con)
 
+    thread = threading.Thread(
+        target=checking_for_backup_date, args=(loggers, g_frame,), daemon=True)
+    thread.start()
+
     app.mainloop()
+
+
+def checking_for_backup_date(loggers, g_frame=None):
+    while True:
+        config = cfg.get_config(loggers)
+        today = __get_backup_date(loggers, config)
+        next_backup_date = __compute_next_backup_date(loggers)
+
+        if today.timestamp() >= next_backup_date.timestamp():
+            start_backing_up(loggers, g_frame)
+        time.sleep(5)
 
 
 def update_backup_date_labels(loggers, g_frame, db_con):
@@ -45,12 +57,14 @@ def update_backup_date_labels(loggers, g_frame, db_con):
     g_frame.set_next_backup_date(backup_dates['next_backup_date'])
 
 
-def start_backing_up(loggers, g_frame):
+def start_backing_up(loggers, g_frame=None):
     db_con = db.connect(loggers)
 
     q = queue.Queue()
 
     files_processing(loggers, db_con, q)
+
+    if g_frame != None:
         update_backup_date_labels(loggers, g_frame, db_con)
 
     db_con.close()
