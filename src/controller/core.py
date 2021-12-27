@@ -51,7 +51,7 @@ def start_backing_up(loggers, g_frame):
     q = queue.Queue()
 
     files_processing(loggers, db_con, q)
-    update_backup_date_labels(loggers, g_frame, db_con)
+        update_backup_date_labels(loggers, g_frame, db_con)
 
     db_con.close()
 
@@ -156,6 +156,31 @@ def compose_backups_dates(loggers, db_con):
     try:
         tables = db.select_tables(loggers, db_con)
 
+        backup_dates['oldest_backup_date'] = __compute_oldest_backup_date(
+            loggers, tables)
+
+        backup_dates['latest_backup_date'] = __compute_latest_backup_date(
+            loggers, tables)
+
+        backup_dates['next_backup_date'] = __compute_next_backup_date(
+            loggers, backup_dates['latest_backup_date'])
+
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return backup_dates
+
+
+def __compute_oldest_backup_date(loggers, tables=None, db_con=None):
+    oldest_backup_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        if tables == None:
+            if db_con == None:
+                db_con = db.connect(loggers)
+            tables = db.select_tables(loggers, db_con)
+
         oldest_backup_date = 0.0
         for i, table_name in enumerate(tables):
             if i == 0:
@@ -164,8 +189,24 @@ def compose_backups_dates(loggers, db_con):
 
             if float(table_name) < oldest_backup_date:
                 oldest_backup_date = float(table_name)
-        backup_dates['oldest_backup_date'] = datetime.datetime.fromtimestamp(
+
+        oldest_backup_date = datetime.datetime.fromtimestamp(
             float(oldest_backup_date))
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return oldest_backup_date
+
+
+def __compute_latest_backup_date(loggers, tables=None, db_con=None):
+    latest_backup_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        if tables == None:
+            if db_con == None:
+                db_con = db.connect(loggers)
+            tables = db.select_tables(loggers, db_con)
 
         latest_backup_date = 0.0
         for i, table_name in enumerate(tables):
@@ -174,16 +215,40 @@ def compose_backups_dates(loggers, db_con):
 
             if latest_backup_date < float(table_name):
                 latest_backup_date = float(table_name)
-        backup_dates['latest_backup_date'] = datetime.datetime.fromtimestamp(
+
+        latest_backup_date = datetime.datetime.fromtimestamp(
             float(latest_backup_date))
-
-        config = cfg.get_config(loggers)
-        backup_dates['next_backup_date'] = backup_dates['latest_backup_date'] + \
-            datetime.timedelta(
-                days=float(config['General']['backup_interval']))
-
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
 
-    return backup_dates
+    return latest_backup_date
+
+
+def __compute_next_backup_date(loggers, latest_backup_date=None,
+                               db_con=None, tables=None):
+    next_backup_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        config = cfg.get_config(loggers)
+
+        if latest_backup_date != None:
+            config = cfg.get_config(loggers)
+            next_backup_date = latest_backup_date + datetime.timedelta(
+                days=float(config['General']['backup_interval']))
+        else:
+            if tables == None:
+                if db_con == None:
+                    db_con = db.connect(loggers)
+                tables = db.select_tables(loggers, db_con)
+
+            latest_backup_date = __compute_latest_backup_date(
+                loggers, tables)
+
+            next_backup_date = latest_backup_date + datetime.timedelta(
+                days=float(config['General']['backup_interval']))
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return next_backup_date
