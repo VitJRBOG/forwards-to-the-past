@@ -76,20 +76,20 @@ def files_processing(loggers, db_con, q):
     filepaths = __get_list_filepaths(
         loggers, config['General']['path_to_files'], [])
 
-    progress_share = 50 / len(filepaths)
-    changes = []
-    for path in filepaths:
-        hashsum = __get_file_hashsum(loggers, path)
+    if len(filepaths) > 0:
+        progress_share = 50 / len(filepaths)
+        changes = []
+        for path in filepaths:
+            hashsum = __get_file_hashsum(loggers, path)
 
-        if not os.path.isfile(config['General']['path_to_backup'] + str(hashsum)):
-            changes.append(path)
-        q.put(progress_share, block=False, timeout=None)
+            if not os.path.isfile(config['General']['path_to_backup'] + str(hashsum)):
+                changes.append(path)
+            q.put(progress_share, block=False, timeout=None)
 
-    if len(changes) > 0:
         table_name = __get_table_name(loggers, config)
         db.create_table(loggers, db_con, table_name, ['hashsum', 'path'])
 
-        progress_share = 50 / len(changes)
+        progress_share = 50 / len(filepaths)
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
             saving_backup_files(loggers, config, db_con,
