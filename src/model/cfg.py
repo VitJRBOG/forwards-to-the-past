@@ -27,7 +27,7 @@ def __make_default_config(loggers):
         config['General'] = {
             'path_to_files': '',
             'path_to_backup': '',
-            'checking_interval': 300,
+            'backup_interval': 1,
             'timezone': ''
         }
         config['DataBase'] = {

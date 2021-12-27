@@ -23,7 +23,7 @@ def run(loggers):
     else:
         q = queue.Queue()
         files_processing(loggers, db_con, q)
-        time.sleep(float(config['General']['checking_interval']))
+        time.sleep(float(config['General']['backup_interval']) * 86400)
 
         return run(loggers)
 
@@ -180,7 +180,7 @@ def compose_backups_dates(loggers, db_con):
         config = cfg.get_config(loggers)
         backup_dates['next_backup_date'] = backup_dates['latest_backup_date'] + \
             datetime.timedelta(
-                days=float(config['General']['checking_interval']))
+                days=float(config['General']['backup_interval']))
 
     except Exception:
         loggers['critical'].exception('Program is terminated')
