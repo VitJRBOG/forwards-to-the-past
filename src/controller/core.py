@@ -17,9 +17,8 @@ import src.view.general_frame as general_frame
 
 
 def run(loggers):
-    config = cfg.get_config(loggers)
     db_con = db.connect(loggers)
-    if config['GUI']['show_gui'] == '1':
+    if cfg.get_show_gui_flag(loggers) == '1':
         __show_gui(loggers, db_con)
     else:
         checking_for_backup_date(loggers)
@@ -43,8 +42,7 @@ def checking_for_backup_date(loggers, g_frame=None):
     while True:
         delete_old_backup(loggers)
 
-        config = cfg.get_config(loggers)
-        today = __get_backup_date(loggers, config)
+        today = __get_backup_date(loggers)
         next_backup_date = __compute_next_backup_date(loggers)
 
         if today.timestamp() >= next_backup_date.timestamp():
@@ -76,10 +74,8 @@ def start_backing_up(loggers, g_frame=None):
 
 
 def files_processing(loggers, db_con, q):
-    config = cfg.get_config(loggers)
-
     filepaths = __get_list_filepaths(
-        loggers, config['General']['path_to_files'], [])
+        loggers, cfg.get_path_to_files(loggers), [])
 
     if len(filepaths) > 0:
         progress_share = 50 / len(filepaths)
@@ -87,17 +83,17 @@ def files_processing(loggers, db_con, q):
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
 
-            if not os.path.isfile(config['General']['path_to_backup'] + str(hashsum)):
+            if not os.path.isfile(cfg.get_path_to_backup(loggers) + str(hashsum)):
                 changes.append(path)
             q.put(progress_share, block=False, timeout=None)
 
-        table_name = __get_table_name(loggers, config)
+        table_name = __get_table_name(loggers)
         db.create_table(loggers, db_con, table_name, ['hashsum', 'path'])
 
         progress_share = 50 / len(filepaths)
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
-            saving_backup_files(loggers, config, db_con,
+            saving_backup_files(loggers, db_con,
                                 table_name, path, hashsum)
             if path in changes:
                 loggers['info'].info(
@@ -108,19 +104,19 @@ def files_processing(loggers, db_con, q):
         q.put(progress_share, block=False, timeout=None)
 
 
-def saving_backup_files(loggers, config, con, table_name, path, hashsum):
+def saving_backup_files(loggers, con, table_name, path, hashsum):
     file = db.File(hashsum, path)
     db.insert_into_table(loggers, con, table_name, file)
-    __copy_file(loggers, path, hashsum, config)
+    __copy_file(loggers, path, hashsum)
 
 
-def __get_table_name(loggers, config):
-    backup_date = __get_backup_date(loggers, config)
+def __get_table_name(loggers):
+    backup_date = __get_backup_date(loggers)
     return backup_date.timestamp()
 
 
-def __get_backup_date(loggers, config):
-    tz = pytz.timezone(config['General']['timezone'])
+def __get_backup_date(loggers):
+    tz = pytz.timezone(cfg.get_timezone(loggers))
     if tz == '':
         tz = pytz.timezone('UTC')
     backup_date = datetime.datetime.now(tz=tz)
@@ -160,9 +156,9 @@ def __get_file_hashsum(loggers, path):
     return hash.hexdigest()
 
 
-def __copy_file(loggers, path, hashsum, config):
+def __copy_file(loggers, path, hashsum):
     try:
-        backup_path = config['General']['path_to_backup'] + hashsum
+        backup_path = cfg.get_path_to_backup(loggers) + hashsum
         shutil.copyfile(path, backup_path)
     except Exception:
         loggers['critical'].exception('Program is terminated')
@@ -172,11 +168,10 @@ def __copy_file(loggers, path, hashsum, config):
 def delete_old_backup(loggers):
     try:
         db_con = db.connect(loggers)
-        config = cfg.get_config(loggers)
         today = get_today_date(loggers)
         backup_obsolescence_date = today - \
             datetime.timedelta(
-                float(config['DataBase']['file_retention_period']))
+                float(cfg.get_file_retention_period(loggers)))
 
         tables = db.select_tables(loggers, db_con)
 
@@ -190,7 +185,7 @@ def delete_old_backup(loggers):
                 loggers['info'].info(logger_msg)
 
         filepaths = __get_list_filepaths(
-            loggers, config['General']['path_to_backup'], [])
+            loggers, cfg.get_path_to_backup(loggers), [])
 
         tables = db.select_tables(loggers, db_con)
 
@@ -292,12 +287,9 @@ def __compute_next_backup_date(loggers, latest_backup_date=None,
     next_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
-        config = cfg.get_config(loggers)
-
         if latest_backup_date != None:
-            config = cfg.get_config(loggers)
             next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(config['General']['backup_interval']))
+                days=float(cfg.get_backup_interval(loggers)))
         else:
             if tables == None:
                 if db_con == None:
@@ -308,7 +300,7 @@ def __compute_next_backup_date(loggers, latest_backup_date=None,
                 loggers, tables)
 
             next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(config['General']['backup_interval']))
+                days=float(cfg.get_backup_interval(loggers)))
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
@@ -317,8 +309,7 @@ def __compute_next_backup_date(loggers, latest_backup_date=None,
 
 
 def get_today_date(loggers):
-    config = cfg.get_config(loggers)
-    tz = pytz.timezone(config['General']['timezone'])
+    tz = pytz.timezone(cfg.get_timezone(loggers))
     if tz == '':
         tz = pytz.timezone('UTC')
     today_date = datetime.datetime.now(tz=tz)

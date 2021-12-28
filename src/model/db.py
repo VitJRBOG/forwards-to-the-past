@@ -19,12 +19,10 @@ class File:
 def connect(loggers):
     con = sqlite3.connect('')
 
-    config = cfg.get_config(loggers)
-
     try:
-        if not os.path.isfile(config['DataBase']['path_to_db']):
+        if not os.path.isfile(cfg.get_path_to_db(loggers)):
             loggers['info'].info('Database has just been created and is empty')
-        con = sqlite3.connect(config['DataBase']['path_to_db'])
+        con = sqlite3.connect(cfg.get_path_to_db(loggers))
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
