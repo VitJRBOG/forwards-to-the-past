@@ -17,19 +17,20 @@ import src.view.general_frame as general_frame
 
 
 def run(loggers):
-    db_con = db.connect(loggers)
+    db.db_init(loggers)
+
     if cfg.get_show_gui_flag(loggers) == '1':
-        __show_gui(loggers, db_con)
+        __show_gui(loggers)
     else:
         checking_for_backup_date(loggers)
 
 
-def __show_gui(loggers, db_con):
+def __show_gui(loggers):
     app = main_window.MainWindow()
 
     g_frame = general_frame.GeneralFrame(
         app, start_backing_up, (loggers,))
-    update_backup_date_labels(loggers, g_frame, db_con)
+    update_backup_date_labels(loggers, g_frame)
 
     thread = threading.Thread(
         target=checking_for_backup_date, args=(loggers, g_frame,), daemon=True)
@@ -51,8 +52,8 @@ def checking_for_backup_date(loggers, g_frame=None):
         time.sleep(5)
 
 
-def update_backup_date_labels(loggers, g_frame, db_con):
-    backup_dates = compose_backups_dates(loggers, db_con)
+def update_backup_date_labels(loggers, g_frame):
+    backup_dates = compose_backups_dates(loggers)
     g_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
     g_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
     g_frame.set_next_backup_date(backup_dates['next_backup_date'])
@@ -61,19 +62,15 @@ def update_backup_date_labels(loggers, g_frame, db_con):
 def start_backing_up(loggers, g_frame=None):
     delete_old_backup(loggers)
 
-    db_con = db.connect(loggers)
-
     q = queue.Queue()
 
-    files_processing(loggers, db_con, q)
+    files_processing(loggers, q)
 
     if g_frame != None:
-        update_backup_date_labels(loggers, g_frame, db_con)
-
-    db_con.close()
+        update_backup_date_labels(loggers, g_frame)
 
 
-def files_processing(loggers, db_con, q):
+def files_processing(loggers, q):
     filepaths = __get_list_filepaths(
         loggers, cfg.get_path_to_files(loggers), [])
 
@@ -88,13 +85,12 @@ def files_processing(loggers, db_con, q):
             q.put(progress_share, block=False, timeout=None)
 
         table_name = __get_table_name(loggers)
-        db.create_table(loggers, db_con, table_name, ['hashsum', 'path'])
+        db.create_table(loggers, table_name, ['hashsum', 'path'])
 
         progress_share = 50 / len(filepaths)
         for path in filepaths:
             hashsum = __get_file_hashsum(loggers, path)
-            saving_backup_files(loggers, db_con,
-                                table_name, path, hashsum)
+            saving_backup_files(loggers, table_name, path, hashsum)
             if path in changes:
                 loggers['info'].info(
                     'File {} was saved as {}'.format(path, hashsum))
@@ -104,9 +100,9 @@ def files_processing(loggers, db_con, q):
         q.put(progress_share, block=False, timeout=None)
 
 
-def saving_backup_files(loggers, con, table_name, path, hashsum):
+def saving_backup_files(loggers, table_name, path, hashsum):
     file = db.File(hashsum, path)
-    db.insert_into_table(loggers, con, table_name, file)
+    db.insert_into_table(loggers, table_name, file)
     __copy_file(loggers, path, hashsum)
 
 
@@ -167,17 +163,16 @@ def __copy_file(loggers, path, hashsum):
 
 def delete_old_backup(loggers):
     try:
-        db_con = db.connect(loggers)
         today = get_today_date(loggers)
         backup_obsolescence_date = today - \
             datetime.timedelta(
                 float(cfg.get_file_retention_period(loggers)))
 
-        tables = db.select_tables(loggers, db_con)
+        tables = db.select_tables(loggers)
 
         for table_name in tables:
             if backup_obsolescence_date.timestamp() > float(table_name):
-                db.drop_table(loggers, db_con, table_name)
+                db.drop_table(loggers, table_name)
                 backup_date = datetime.datetime.fromtimestamp(
                     float(table_name))
                 logger_msg = '{} backup is obsolete and was deleted.'.format(
@@ -187,13 +182,13 @@ def delete_old_backup(loggers):
         filepaths = __get_list_filepaths(
             loggers, cfg.get_path_to_backup(loggers), [])
 
-        tables = db.select_tables(loggers, db_con)
+        tables = db.select_tables(loggers)
 
         for filepath in filepaths:
             file_name = os.path.basename(filepath)
             for i, table_name in enumerate(tables):
                 match = db.select_file_by_hashsum(
-                    loggers, db_con, table_name, file_name)
+                    loggers, table_name, file_name)
                 if len(match) != 0:
                     break
 
@@ -207,17 +202,15 @@ def delete_old_backup(loggers):
         sys.exit()
 
 
-def compose_backups_dates(loggers, db_con):
+def compose_backups_dates(loggers):
     backup_dates = {}
 
     try:
-        tables = db.select_tables(loggers, db_con)
-
         backup_dates['oldest_backup_date'] = __compute_oldest_backup_date(
-            loggers, tables)
+            loggers)
 
         backup_dates['latest_backup_date'] = __compute_latest_backup_date(
-            loggers, tables)
+            loggers)
 
         backup_dates['next_backup_date'] = __compute_next_backup_date(
             loggers, backup_dates['latest_backup_date'])
@@ -229,14 +222,11 @@ def compose_backups_dates(loggers, db_con):
     return backup_dates
 
 
-def __compute_oldest_backup_date(loggers, tables=None, db_con=None):
+def __compute_oldest_backup_date(loggers):
     oldest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
-        if tables == None:
-            if db_con == None:
-                db_con = db.connect(loggers)
-            tables = db.select_tables(loggers, db_con)
+        tables = db.select_tables(loggers)
 
         oldest = 0.0
         for i, table_name in enumerate(tables):
@@ -256,14 +246,11 @@ def __compute_oldest_backup_date(loggers, tables=None, db_con=None):
     return oldest_backup_date
 
 
-def __compute_latest_backup_date(loggers, tables=None, db_con=None):
+def __compute_latest_backup_date(loggers):
     latest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
-        if tables == None:
-            if db_con == None:
-                db_con = db.connect(loggers)
-            tables = db.select_tables(loggers, db_con)
+        tables = db.select_tables(loggers)
 
         latest = 0.0
         for i, table_name in enumerate(tables):
@@ -282,8 +269,7 @@ def __compute_latest_backup_date(loggers, tables=None, db_con=None):
     return latest_backup_date
 
 
-def __compute_next_backup_date(loggers, latest_backup_date=None,
-                               db_con=None, tables=None):
+def __compute_next_backup_date(loggers, latest_backup_date=None):
     next_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
@@ -291,13 +277,10 @@ def __compute_next_backup_date(loggers, latest_backup_date=None,
             next_backup_date = latest_backup_date + datetime.timedelta(
                 days=float(cfg.get_backup_interval(loggers)))
         else:
-            if tables == None:
-                if db_con == None:
-                    db_con = db.connect(loggers)
-                tables = db.select_tables(loggers, db_con)
+            tables = db.select_tables(loggers)
 
             latest_backup_date = __compute_latest_backup_date(
-                loggers, tables)
+                loggers)
 
             next_backup_date = latest_backup_date + datetime.timedelta(
                 days=float(cfg.get_backup_interval(loggers)))
