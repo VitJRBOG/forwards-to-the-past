@@ -56,12 +56,40 @@ def insert_into_table(loggers, con, table_name, file):
         sys.exit()
 
 
-def select_file_by_hashsum(loggers, con, hashsum):
+def drop_table(loggers, con, table_name):
+    cur = con.cursor()
+
+    try:
+        query = 'DROP TABLE "{}"'.format(table_name)
+        cur.execute(query)
+        con.commit()
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+
+def select_files(loggers, con, table_name):
     files = []
 
     try:
         cur = con.cursor()
-        query = 'SELECT * FROM file WHERE hashsum = ?'
+        query = 'SELECT * FROM "{}"'.format(table_name)
+        for row in cur.execute(query):
+            file = __parse_row(loggers, row)
+            files.append(file)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+    return files
+
+
+def select_file_by_hashsum(loggers, con, table_name, hashsum):
+    files = []
+
+    try:
+        cur = con.cursor()
+        query = 'SELECT * FROM "{}" WHERE hashsum = ?'.format(table_name)
         for row in cur.execute(query, [hashsum]):
             file = __parse_row(loggers, row)
             files.append(file)

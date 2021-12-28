@@ -41,12 +41,15 @@ def __show_gui(loggers, db_con):
 
 def checking_for_backup_date(loggers, g_frame=None):
     while True:
+        delete_old_backup(loggers)
+
         config = cfg.get_config(loggers)
         today = __get_backup_date(loggers, config)
         next_backup_date = __compute_next_backup_date(loggers)
 
         if today.timestamp() >= next_backup_date.timestamp():
             start_backing_up(loggers, g_frame)
+
         time.sleep(5)
 
 
@@ -58,6 +61,8 @@ def update_backup_date_labels(loggers, g_frame, db_con):
 
 
 def start_backing_up(loggers, g_frame=None):
+    delete_old_backup(loggers)
+
     db_con = db.connect(loggers)
 
     q = queue.Queue()
@@ -159,6 +164,49 @@ def __copy_file(loggers, path, hashsum, config):
     try:
         backup_path = config['General']['path_to_backup'] + hashsum
         shutil.copyfile(path, backup_path)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+
+def delete_old_backup(loggers):
+    try:
+        db_con = db.connect(loggers)
+        config = cfg.get_config(loggers)
+        today = get_today_date(loggers)
+        backup_obsolescence_date = today - \
+            datetime.timedelta(
+                float(config['DataBase']['file_retention_period']))
+
+        tables = db.select_tables(loggers, db_con)
+
+        for table_name in tables:
+            if backup_obsolescence_date.timestamp() > float(table_name):
+                db.drop_table(loggers, db_con, table_name)
+                backup_date = datetime.datetime.fromtimestamp(
+                    float(table_name))
+                logger_msg = '{} backup is obsolete and was deleted.'.format(
+                    backup_date.strftime('%d.%m.%Y %H:%M'))
+                loggers['info'].info(logger_msg)
+
+        filepaths = __get_list_filepaths(
+            loggers, config['General']['path_to_backup'], [])
+
+        tables = db.select_tables(loggers, db_con)
+
+        for filepath in filepaths:
+            file_name = os.path.basename(filepath)
+            for i, table_name in enumerate(tables):
+                match = db.select_file_by_hashsum(
+                    loggers, db_con, table_name, file_name)
+                if len(match) != 0:
+                    break
+
+                if i == len(tables) - 1:
+                    os.remove(filepath)
+                    loggers['info'].info(
+                        'File {} was deleted.'.format(filepath))
+
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
@@ -266,3 +314,12 @@ def __compute_next_backup_date(loggers, latest_backup_date=None,
         sys.exit()
 
     return next_backup_date
+
+
+def get_today_date(loggers):
+    config = cfg.get_config(loggers)
+    tz = pytz.timezone(config['General']['timezone'])
+    if tz == '':
+        tz = pytz.timezone('UTC')
+    today_date = datetime.datetime.now(tz=tz)
+    return today_date
