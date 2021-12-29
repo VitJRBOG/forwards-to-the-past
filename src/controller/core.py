@@ -13,7 +13,6 @@ import pytz
 import src.model.cfg as cfg
 import src.model.db as db
 import src.view.main_window as main_window
-import src.view.general_frame as general_frame
 import src.view.backup_restoring_window as backup_restoring_window
 
 
@@ -27,7 +26,7 @@ def run(loggers):
 
 
 def __show_gui(loggers):
-    app = main_window.MainWindow()
+    app = main_window.Window()
 
     params_for_btn = {
         'start': {
@@ -40,7 +39,7 @@ def __show_gui(loggers):
         }
     }
 
-    g_frame = general_frame.GeneralFrame(
+    g_frame = main_window.GeneralFrame(
         app, params_for_btn)
     update_backup_date_labels(loggers, g_frame)
 
