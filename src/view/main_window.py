@@ -8,7 +8,7 @@ class MainWindow(tk.Tk):
         super().__init__()
 
         window_width = 500
-        window_height = 150
+        window_height = 190
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()

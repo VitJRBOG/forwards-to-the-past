@@ -14,6 +14,7 @@ import src.model.cfg as cfg
 import src.model.db as db
 import src.view.main_window as main_window
 import src.view.general_frame as general_frame
+import src.view.backup_restoring_window as backup_restoring_window
 
 
 def run(loggers):
@@ -28,8 +29,19 @@ def run(loggers):
 def __show_gui(loggers):
     app = main_window.MainWindow()
 
+    params_for_btn = {
+        'start': {
+            'func': start_backing_up,
+            'args': [loggers]
+        },
+        'restore': {
+            'func': show_backup_restoring_window,
+            'args': [loggers, app]
+        }
+    }
+
     g_frame = general_frame.GeneralFrame(
-        app, start_backing_up, (loggers,))
+        app, params_for_btn)
     update_backup_date_labels(loggers, g_frame)
 
     thread = threading.Thread(
@@ -37,6 +49,23 @@ def __show_gui(loggers):
     thread.start()
 
     app.mainloop()
+
+
+def show_backup_restoring_window(loggers, app, master):
+    tables = db.select_tables(loggers)
+
+    backups = []
+
+    for table_name in tables:
+        backup = datetime.datetime.fromtimestamp(float(table_name))
+        backups.append(backup.strftime('%d.%m.%Y %H:%M:%S'))
+
+    params_for_btn = {
+        'func': restoring_backup,
+        'args': [loggers, backups]
+    }
+
+    window = backup_restoring_window.Window(app, backups, params_for_btn)
 
 
 def checking_for_backup_date(loggers, g_frame=None):
@@ -108,7 +137,8 @@ def saving_backup_files(loggers, table_name, path, hashsum):
 
 def __get_table_name(loggers):
     backup_date = __get_backup_date(loggers)
-    return backup_date.timestamp()
+    table_name = str(backup_date.timestamp()).split('.')[0]
+    return table_name
 
 
 def __get_backup_date(loggers):
@@ -197,6 +227,28 @@ def delete_old_backup(loggers):
                     loggers['info'].info(
                         'File {} was deleted.'.format(filepath))
 
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
+
+def restoring_backup(loggers, backup_date):
+    try:
+        table_name = datetime.datetime.strptime(
+            backup_date.get(), '%d.%m.%Y %H:%M:%S').timestamp()
+
+        backup_files = db.select_files(loggers, int(table_name))
+
+        filepaths = __get_list_filepaths(
+            loggers, cfg.get_path_to_files(loggers), [])
+
+        for file_path in filepaths:
+            os.remove(file_path)
+
+        for backup_file in backup_files:
+            src_path = '{}{}'.format(
+                cfg.get_path_to_backup(loggers), backup_file.hashsum)
+            shutil.copyfile(src_path, backup_file.path)
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()

@@ -6,14 +6,19 @@ import threading
 
 
 class GeneralFrame(tk.Canvas):
-    def __init__(self, master, func, func_args):
+    def __init__(self, master, params_for_btn):
         super().__init__(master)
 
         self.oldest_backup_date = make_label(self, coordinates=(0, 30))
         self.latest_backup_date = make_label(self, coordinates=(0, 50))
         self.next_backup_date = make_label(self, coordinates=(0, 70))
 
-        make_button(self, func, func_args, (150, 100))
+        make_button(self, 'Запустить сейчас',
+                    params_for_btn['start']['func'],
+                    params_for_btn['start']['args'], (150, 100))
+        make_button(self, 'Восстановить резервную копию',
+                    params_for_btn['restore']['func'],
+                    params_for_btn['restore']['args'], (100, 130))
 
         self.pack()
 
@@ -51,13 +56,10 @@ def make_label(master, coordinates):
     return text_variable
 
 
-def make_button(master, func, func_args, coordinates):
-    a = []
-    for item in func_args:
-        a.append(item)
-    a.append(master)
-    button = tk.Button(master, text='Запустить сейчас',
+def make_button(master, text, func, func_args, coordinates):
+    func_args.append(master)
+    button = tk.Button(master, text=text,
                        command=lambda: threading.Thread(target=func,
-                                                        args=(a),
+                                                        args=(func_args),
                                                         daemon=True).start())
     button.place(x=coordinates[0], y=coordinates[1])
