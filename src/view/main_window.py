@@ -28,20 +28,12 @@ class GeneralFrame(tk.Canvas):
     def __init__(self, master, params_for_btn):
         super().__init__(master)
 
-        oldest_backup_date_label = Label(self, coordinates=(0, 30))
-        latest_backup_date_label = Label(self, coordinates=(0, 50))
-        next_backup_date_label = Label(self, coordinates=(0, 70))
+        labels_frame = LabelsFrame(self, (0, 0))
+        self.oldest_backup_date = labels_frame.oldest_backup_date
+        self.latest_backup_date = labels_frame.latest_backup_date
+        self.next_backup_date = labels_frame.next_backup_date
 
-        self.oldest_backup_date = oldest_backup_date_label.text_variable
-        self.latest_backup_date = latest_backup_date_label.text_variable
-        self.next_backup_date = next_backup_date_label.text_variable
-
-        Button(self, 'Запустить сейчас',
-               params_for_btn['start']['func'],
-               params_for_btn['start']['args'], (150, 100))
-        Button(self, 'Восстановить резервную копию',
-               params_for_btn['restore']['func'],
-               params_for_btn['restore']['args'], (100, 130))
+        self.buttons_frame = ButtonsFrame(self, params_for_btn, (0, 100))
 
         self.pack()
 
@@ -70,19 +62,48 @@ class GeneralFrame(tk.Canvas):
         self.next_backup_date.set('Следующее копирование: {}'.format(text))
 
 
+class LabelsFrame(tk.Canvas):
+    def __init__(self, master, coordinates):
+        super().__init__(master)
+
+        oldest_backup_date_label = Label(self, coordinates=(0, 30))
+        latest_backup_date_label = Label(self, coordinates=(0, 50))
+        next_backup_date_label = Label(self, coordinates=(0, 70))
+
+        self.oldest_backup_date = oldest_backup_date_label.text_variable
+        self.latest_backup_date = latest_backup_date_label.text_variable
+        self.next_backup_date = next_backup_date_label.text_variable
+
+        self.place(x=coordinates[0], y=coordinates[1])
+
+
 class Label(tk.Label):
     def __init__(self, master, coordinates):
         self.text_variable = tk.StringVar()
+        super().__init__(master, textvariable=self.text_variable)
 
-        label = tk.Label(master, textvariable=self.text_variable)
-        label.place(x=coordinates[0], y=coordinates[1])
+        self.place(x=coordinates[0], y=coordinates[1])
+
+
+class ButtonsFrame(tk.Canvas):
+    def __init__(self, master, params_for_btn, coordinates):
+        super().__init__(master)
+
+        Button(self, master, 'Запустить сейчас',
+               params_for_btn['start']['func'],
+               params_for_btn['start']['args'], (150, 0))
+        Button(self, master, 'Восстановить резервную копию',
+               params_for_btn['restore']['func'],
+               params_for_btn['restore']['args'], (100, 30))
+
+        self.place(x=coordinates[0], y=coordinates[1])
 
 
 class Button(tk.Button):
-    def __init__(self, master, text, func, func_args, coordinates):
-        func_args.append(master)
-        button = tk.Button(master, text=text,
-                           command=lambda: threading.Thread(target=func,
-                                                            args=(func_args),
-                                                            daemon=True).start())
-        button.place(x=coordinates[0], y=coordinates[1])
+    def __init__(self, master, g_frame, text, func, func_args, coordinates):
+        func_args.append(g_frame)
+        super().__init__(master, text=text,
+                         command=lambda: threading.Thread(target=func,
+                                                          args=(func_args),
+                                                          daemon=True).start())
+        self.place(x=coordinates[0], y=coordinates[1])
