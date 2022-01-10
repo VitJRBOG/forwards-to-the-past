@@ -10,6 +10,7 @@ import threading
 class Window(tk.Tk):
     def __init__(self):
         super().__init__()
+        self.title('Forwards to the Past')
 
         window_width = 500
         window_height = 190
