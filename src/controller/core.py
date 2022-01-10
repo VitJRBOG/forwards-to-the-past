@@ -88,14 +88,30 @@ def update_backup_date_labels(loggers, g_frame):
 
 
 def start_backing_up(loggers, g_frame=None):
-    delete_old_backup(loggers)
-
     q = queue.Queue()
+
+    if g_frame != None:
+        thread = threading.Thread(target=update_g_frame,
+                                  args=(loggers, g_frame, q,), daemon=True)
+        thread.start()
+
+    delete_old_backup(loggers)
 
     files_processing(loggers, q)
 
-    if g_frame != None:
-        update_backup_date_labels(loggers, g_frame)
+
+def update_g_frame(loggers, g_frame, q):
+    g_frame.update_progress_bar(0)
+    g_frame.hide_buttons_show_progressbar()
+
+    while True:
+        progress = q.get(block=True, timeout=None)
+        g_frame.update_progress_bar(progress)
+        if progress == 100:
+            break
+
+    update_backup_date_labels(loggers, g_frame)
+    g_frame.hide_progress_bar_show_buttons()
 
 
 def files_processing(loggers, q):
@@ -122,10 +138,10 @@ def files_processing(loggers, q):
             if path in changes:
                 loggers['info'].info(
                     'File {} was saved as {}'.format(path, hashsum))
-                q.put(progress_share, block=False, timeout=None)
-    else:
-        progress_share = 100
-        q.put(progress_share, block=False, timeout=None)
+            q.put(progress_share, block=False, timeout=None)
+
+    progress_share = 100
+    q.put(progress_share, block=False, timeout=None)
 
 
 def saving_backup_files(loggers, table_name, path, hashsum):

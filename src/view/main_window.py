@@ -1,6 +1,8 @@
 # coding: utf-8
 
 import tkinter as tk
+import tkinter.ttk as ttk
+from tkinter.constants import HORIZONTAL
 import datetime
 import threading
 
@@ -33,6 +35,10 @@ class GeneralFrame(tk.Canvas):
         self.latest_backup_date = labels_frame.latest_backup_date
         self.next_backup_date = labels_frame.next_backup_date
 
+        self.progress_bar_frame = ProgressbarFrame(self, coordinates=(0, 100))
+        self.progress_bar = self.progress_bar_frame.progress_bar
+        self.progress_bar_frame.place_forget()
+
         self.buttons_frame = ButtonsFrame(self, params_for_btn, (0, 100))
 
         self.pack()
@@ -60,6 +66,20 @@ class GeneralFrame(tk.Canvas):
         else:
             text = 'автоматическое копирование отключено'
         self.next_backup_date.set('Следующее копирование: {}'.format(text))
+
+    def hide_progress_bar_show_buttons(self):
+        self.progress_bar_frame.place_forget()
+        self.buttons_frame.place(x=0, y=100)
+
+    def hide_buttons_show_progressbar(self):
+        self.buttons_frame.place_forget()
+        self.progress_bar_frame.place(x=0, y=100)
+
+    def update_progress_bar(self, progress):
+        if progress == 0 or progress == 100:
+            self.progress_bar['value'] = progress
+        else:
+            self.progress_bar['value'] += progress
 
 
 class LabelsFrame(tk.Canvas):
@@ -106,4 +126,15 @@ class Button(tk.Button):
                          command=lambda: threading.Thread(target=func,
                                                           args=(func_args),
                                                           daemon=True).start())
+        self.place(x=coordinates[0], y=coordinates[1])
+
+
+class ProgressbarFrame(tk.Canvas):
+    def __init__(self, master, coordinates):
+        super().__init__(master)
+
+        self.progress_bar = ttk.Progressbar(
+            self, orient=HORIZONTAL, length=350, mode='determinate')
+        self.progress_bar.place(x=20, y=0)
+
         self.place(x=coordinates[0], y=coordinates[1])
