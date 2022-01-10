@@ -30,29 +30,29 @@ class Frame(tk.Canvas):
     def __init__(self, master, backups_dates, params_for_btn):
         super().__init__(master)
 
-        selected_backup = make_dropdown_list(
-            self, backups_dates, coordinates=(130, 10))
+        option_menu = OptionMenu(self, backups_dates, coordinates=(130, 10))
+        selected_backup = option_menu.option
 
         params_for_btn['args'][1] = selected_backup
-        make_button(self, params_for_btn['func'],
-                    params_for_btn['args'], coordinates=(157, 45))
+        Button(self, 'Восстановить', params_for_btn['func'],
+               params_for_btn['args'], coordinates=(157, 45))
 
         self.pack()
 
 
-def make_dropdown_list(master, options, coordinates):
-    option = tk.StringVar(master)
-    option.set(options[len(options)-1])
+class OptionMenu(tk.OptionMenu):
+    def __init__(self, master, options, coordinates):
+        self.option = tk.StringVar(master)
+        self.option.set(options[len(options)-1])
 
-    dropdown_list = tk.OptionMenu(master, option, *options)
-    dropdown_list.place(x=coordinates[0], y=coordinates[1])
-
-    return option
+        super().__init__(master, self.option, *options)
+        self.place(x=coordinates[0], y=coordinates[1])
 
 
-def make_button(master, func, func_args, coordinates):
-    button = tk.Button(master, text='Восстановить',
-                       command=lambda: threading.Thread(target=func,
-                                                        args=(func_args),
-                                                        daemon=True).start())
-    button.place(x=coordinates[0], y=coordinates[1])
+class Button(tk.Button):
+    def __init__(self, master, text, func, func_args, coordinates):
+        super().__init__(master, text=text,
+                         command=lambda: threading.Thread(target=func,
+                                                          args=(func_args),
+                                                          daemon=True).start())
+        self.place(x=coordinates[0], y=coordinates[1])
