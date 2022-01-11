@@ -6,41 +6,41 @@ import configparser
 
 
 def get_path_to_backup(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['General']['path_to_backup']
 
 
 def get_path_to_files(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['General']['path_to_files']
 
 
 def get_backup_interval(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['General']['backup_interval']
 
 
 def get_timezone(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['General']['timezone']
 
 
 def get_path_to_db(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['DataBase']['path_to_db']
 
 
 def get_file_retention_period(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['DataBase']['file_retention_period']
 
 
 def get_show_gui_flag(loggers):
-    config = __get_config(loggers)
+    config = get_config(loggers)
     return config['GUI']['show_gui']
 
 
-def __get_config(loggers):
+def get_config(loggers):
     config = configparser.ConfigParser()
 
     try:
@@ -53,6 +53,15 @@ def __get_config(loggers):
         sys.exit()
 
     return config
+
+
+def write_config(loggers, config):
+    try:
+        with open('config.ini', 'w') as f:
+            config.write(f)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
 
 
 def __make_default_config(loggers):

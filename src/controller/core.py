@@ -12,8 +12,7 @@ import pytz
 
 import src.model.cfg as cfg
 import src.model.db as db
-import src.view.main_window as main_window
-import src.view.backup_restoring_window as backup_restoring_window
+import src.view.gui as gui
 
 
 def run(loggers):
@@ -26,31 +25,50 @@ def run(loggers):
 
 
 def __show_gui(loggers):
-    app = main_window.Window()
-
-    params_for_btn = {
-        'start': {
+    buttons_params = {
+        'backup': {
             'func': start_backing_up,
             'args': [loggers]
         },
-        'restore': {
-            'func': show_backup_restoring_window,
-            'args': [loggers, app]
+        'restoring': {
+            'func': restoring_backup,
+            'args': [loggers]
+        },
+        'settings': {
+            'path_to_backup': {
+                'func': select_path_to_backup,
+                'args': [loggers]
+            },
+            'path_to_files': {
+                'func': select_path_to_files,
+                'args': [loggers]
+            },
+            'path_to_db': {
+                'func': select_path_to_db,
+                'args': [loggers]
+            },
+            'save': {
+                'func': update_configs,
+                'args': [loggers]
+            }
         }
     }
 
-    g_frame = main_window.GeneralFrame(
-        app, params_for_btn)
-    update_backup_date_labels(loggers, g_frame)
+    backups = get_backups_list(loggers)
+    configs = cfg.get_config(loggers)
+
+    app = gui.Window(buttons_params, backups, configs)
+
+    update_backup_date_labels(loggers, app.main_frame.backup_frame)
 
     thread = threading.Thread(
-        target=checking_for_backup_date, args=(loggers, g_frame,), daemon=True)
+        target=checking_for_backup_date, args=(loggers, app.main_frame,), daemon=True)
     thread.start()
 
     app.mainloop()
 
 
-def show_backup_restoring_window(loggers, app, master):
+def get_backups_list(loggers):
     tables = db.select_tables(loggers)
 
     backups = []
@@ -59,15 +77,10 @@ def show_backup_restoring_window(loggers, app, master):
         backup = datetime.datetime.fromtimestamp(float(table_name))
         backups.append(backup.strftime('%d.%m.%Y %H:%M:%S'))
 
-    params_for_btn = {
-        'func': restoring_backup,
-        'args': [loggers, backups]
-    }
-
-    window = backup_restoring_window.Window(app, backups, params_for_btn)
+    return backups
 
 
-def checking_for_backup_date(loggers, g_frame=None):
+def checking_for_backup_date(loggers, main_frame=None):
     while True:
         delete_old_backup(loggers)
 
@@ -75,24 +88,24 @@ def checking_for_backup_date(loggers, g_frame=None):
         next_backup_date = __compute_next_backup_date(loggers)
 
         if today.timestamp() >= next_backup_date.timestamp():
-            start_backing_up(loggers, g_frame)
+            start_backing_up(loggers, main_frame)
 
         time.sleep(5)
 
 
-def update_backup_date_labels(loggers, g_frame):
+def update_backup_date_labels(loggers, backup_frame):
     backup_dates = compose_backups_dates(loggers)
-    g_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
-    g_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
-    g_frame.set_next_backup_date(backup_dates['next_backup_date'])
+    backup_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
+    backup_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
+    backup_frame.set_next_backup_date(backup_dates['next_backup_date'])
 
 
-def start_backing_up(loggers, g_frame=None):
+def start_backing_up(loggers, main_frame=None):
     q = queue.Queue()
 
-    if g_frame != None:
-        thread = threading.Thread(target=update_g_frame,
-                                  args=(loggers, g_frame, q,), daemon=True)
+    if main_frame != None:
+        thread = threading.Thread(target=update_backup_frame,
+                                  args=(loggers, main_frame, q,), daemon=True)
         thread.start()
 
     delete_old_backup(loggers)
@@ -100,18 +113,35 @@ def start_backing_up(loggers, g_frame=None):
     files_processing(loggers, q)
 
 
-def update_g_frame(loggers, g_frame, q):
-    g_frame.update_progress_bar(0)
-    g_frame.hide_buttons_show_progressbar()
+def update_backup_frame(loggers, main_frame, q):
+    main_frame.backup_frame.update_progress_bar(0)
+    main_frame.backup_frame.hide_buttons_show_progressbar()
 
     while True:
         progress = q.get(block=True, timeout=None)
-        g_frame.update_progress_bar(progress)
+        main_frame.backup_frame.update_progress_bar(progress)
         if progress == 100:
             break
 
-    update_backup_date_labels(loggers, g_frame)
-    g_frame.hide_progress_bar_show_buttons()
+    update_backup_date_labels(loggers, main_frame.backup_frame)
+
+    backups = get_backups_list(loggers)
+
+    main_frame.restoring_frame.update_backup_dates(backups)
+    main_frame.backup_frame.hide_progress_bar_show_buttons()
+
+
+def update_restoring_frame(loggers, main_frame, q):
+    main_frame.restoring_frame.update_progress_bar(0)
+    main_frame.restoring_frame.hide_button_show_progressbar()
+
+    while True:
+        progress = q.get(block=True, timeout=None)
+        main_frame.restoring_frame.update_progress_bar(progress)
+        if progress == 100:
+            break
+
+    main_frame.restoring_frame.hide_progress_bar_show_button()
 
 
 def files_processing(loggers, q):
@@ -247,8 +277,13 @@ def delete_old_backup(loggers):
         sys.exit()
 
 
-def restoring_backup(loggers, backup_date):
+def restoring_backup(loggers, main_frame, backup_date):
     try:
+        q = queue.Queue()
+
+        threading.Thread(target=update_restoring_frame,
+                         args=(loggers, main_frame, q,), daemon=True).start()
+
         table_name = datetime.datetime.strptime(
             backup_date.get(), '%d.%m.%Y %H:%M:%S').timestamp()
 
@@ -257,13 +292,30 @@ def restoring_backup(loggers, backup_date):
         filepaths = __get_list_filepaths(
             loggers, cfg.get_path_to_files(loggers), [])
 
+        progress_share = 50
+        if len(filepaths) > 0:
+            progress_share = 50 / len(filepaths)
+        else:
+            q.put(progress_share, block=False, timeout=False)
+
         for file_path in filepaths:
             os.remove(file_path)
+            q.put(progress_share, block=False, timeout=False)
+
+        progress_share = 50
+        if len(backup_files) > 0:
+            progress_share = 50 / len(backup_files)
+        else:
+            q.put(progress_share, block=False, timeout=False)
 
         for backup_file in backup_files:
             src_path = '{}{}'.format(
                 cfg.get_path_to_backup(loggers), backup_file.hashsum)
             shutil.copyfile(src_path, backup_file.path)
+            q.put(progress_share, block=False, timeout=False)
+
+        progress_share = 100
+        q.put(progress_share, block=False, timeout=None)
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
@@ -364,3 +416,41 @@ def get_today_date(loggers):
         tz = pytz.timezone('UTC')
     today_date = datetime.datetime.now(tz=tz)
     return today_date
+
+
+def select_path_to_backup(loggers, settings_frame):
+    path = gui.open_dir_dialog()
+    path = os.path.abspath(path)
+    path = os.path.join(path, '')
+
+    if path != '':
+        settings_frame.path_to_backup.set(path)
+
+
+def select_path_to_files(loggers, settings_frame):
+    path = gui.open_dir_dialog()
+    path = os.path.abspath(path)
+    path = os.path.join(path, '')
+
+    if path != '':
+        settings_frame.path_to_files.set(path)
+
+
+def select_path_to_db(loggers, settings_frame):
+    path = gui.open_filedialog()
+    path = os.path.abspath(path)
+
+    if path != '':
+        settings_frame.path_to_db.set(path)
+
+
+def update_configs(loggers, settings_frame):
+    config = cfg.get_config(loggers)
+    config['General']['path_to_backup'] = settings_frame.path_to_backup.get()
+    config['General']['path_to_files'] = settings_frame.path_to_files.get()
+    config['General']['backup_interval'] = settings_frame.backup_interval.get()
+    config['General']['timezone'] = settings_frame.timezone.get()
+    config['DataBase']['path_to_db'] = settings_frame.path_to_db.get()
+    config['DataBase']['file_retention_period'] = settings_frame.file_retention_period.get()
+
+    cfg.write_config(loggers, config)
