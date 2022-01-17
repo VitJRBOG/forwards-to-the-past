@@ -19,12 +19,12 @@ def run(loggers):
     db.db_init(loggers)
 
     if cfg.get_show_gui_flag(loggers) == '1':
-        __show_gui(loggers)
+        start_with_gui(loggers)
     else:
         checking_for_backup_date(loggers)
 
 
-def __show_gui(loggers):
+def start_with_gui(loggers):
     buttons_params = {
         'backup': {
             'func': start_backing_up,
@@ -72,7 +72,7 @@ def checking_for_backup_date(loggers, main_frame=None):
     while True:
         delete_old_backup(loggers)
 
-        today = tools.get_backup_date(loggers)
+        today = tools.get_today_date(loggers)
         next_backup_date = tools.compute_next_backup_date(loggers)
 
         if today.timestamp() >= next_backup_date.timestamp():
@@ -91,10 +91,10 @@ def start_backing_up(loggers, main_frame=None):
 
     delete_old_backup(loggers)
 
-    files_processing(loggers, q)
+    making_new_backup(loggers, q)
 
 
-def files_processing(loggers, q):
+def making_new_backup(loggers, q):
     filepaths = tools.get_list_filepaths(
         loggers, cfg.get_path_to_files(loggers), [])
 
@@ -102,18 +102,18 @@ def files_processing(loggers, q):
         progress_share = 50 / len(filepaths)
         changes = []
         for path in filepaths:
-            hashsum = tools.get_file_hashsum(loggers, path)
+            hashsum = tools.compose_file_hashsum(loggers, path)
 
             if not os.path.isfile(cfg.get_path_to_backup(loggers) + str(hashsum)):
                 changes.append(path)
             q.put(progress_share, block=False, timeout=None)
 
-        table_name = tools.get_table_name(loggers)
+        table_name = tools.compose_table_name(loggers)
         db.create_table(loggers, table_name, ['hashsum', 'path'])
 
         progress_share = 50 / len(filepaths)
         for path in filepaths:
-            hashsum = tools.get_file_hashsum(loggers, path)
+            hashsum = tools.compose_file_hashsum(loggers, path)
             tools.saving_backup_files(loggers, table_name, path, hashsum)
             if path in changes:
                 loggers['info'].info(

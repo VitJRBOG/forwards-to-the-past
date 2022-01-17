@@ -29,7 +29,7 @@ def saving_backup_files(loggers, table_name, path, hashsum):
     copy_file(loggers, path, hashsum)
 
 
-def get_file_hashsum(loggers, path):
+def compose_file_hashsum(loggers, path):
     hash = hashlib.md5()
     try:
         with open(path, 'rb') as f:
@@ -51,18 +51,10 @@ def copy_file(loggers, path, hashsum):
         sys.exit()
 
 
-def get_table_name(loggers):
-    backup_date = get_backup_date(loggers)
+def compose_table_name(loggers):
+    backup_date = get_today_date(loggers)
     table_name = str(backup_date.timestamp()).split('.')[0]
     return table_name
-
-
-def get_backup_date(loggers):
-    tz = pytz.timezone(cfg.get_timezone(loggers))
-    if tz == '':
-        tz = pytz.timezone('UTC')
-    backup_date = datetime.datetime.now(tz=tz)
-    return backup_date
 
 
 def get_list_filepaths(loggers, path, filepaths):
