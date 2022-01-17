@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import tkinter as tk
-from tkinter.constants import DISABLED, HORIZONTAL
+from tkinter.constants import HORIZONTAL
 import tkinter.ttk as ttk
 import tkinter.filedialog as filedialog
 import threading
@@ -97,7 +97,6 @@ class BackupFrame(tk.Canvas):
         self.latest_backup = latest_backup_label.text_var
         self.next_backup = next_backup_label.text_var
 
-        button_params['args'].append(master)
         self.backup_button = Button(
             self, 'Запустить сейчас',
             button_params['func'],

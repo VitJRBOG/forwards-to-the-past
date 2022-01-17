@@ -2,8 +2,20 @@
 
 import os
 
-import src.controller.tools as tools
 import src.view.gui as gui
+import src.controller.tools as tools
+import src.model.cfg as cfg
+
+
+def make_main_window(loggers, buttons_params):
+    backups = tools.get_backups_list(loggers)
+    configs = cfg.get_config(loggers)
+
+    app = gui.Window(buttons_params, backups, configs)
+
+    update_backup_date_labels(loggers, app.main_frame.backup_frame)
+
+    return app
 
 
 def update_backup_frame(loggers, main_frame, q):

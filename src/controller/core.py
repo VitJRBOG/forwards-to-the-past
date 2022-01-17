@@ -10,25 +10,35 @@ import shutil
 
 import src.model.cfg as cfg
 import src.model.db as db
-import src.view.gui as gui
 import src.controller.tools as tools
 import src.controller.painter as painter
+import src.controller.buttons_operations as but_ops
 
 
 def run(loggers):
     db.db_init(loggers)
 
+    q_start = queue.Queue()
+
     if cfg.get_show_gui_flag(loggers) == '1':
-        start_with_gui(loggers)
+        q_process = queue.Queue()
+        start_with_gui(loggers, q_start, q_process)
     else:
-        checking_for_backup_date(loggers)
+        start_without_gui(loggers, q_start)
 
 
-def start_with_gui(loggers):
+def start_without_gui(loggers, q_start):
+    threading.Thread(target=checking_for_backup_date, args=(
+        loggers, q_start,), daemon=True).start()
+
+    checking_the_backup_start_flag(loggers, q_start, queue.Queue())
+
+
+def start_with_gui(loggers, q_start, q_process):
     buttons_params = {
         'backup': {
-            'func': start_backing_up,
-            'args': [loggers]
+            'func': but_ops.start_backuping,
+            'args': [loggers, q_start]
         },
         'restoring': {
             'func': restoring_backup,
@@ -54,21 +64,19 @@ def start_with_gui(loggers):
         }
     }
 
-    backups = tools.get_backups_list(loggers)
-    configs = cfg.get_config(loggers)
+    app = painter.make_main_window(loggers, buttons_params)
 
-    app = gui.Window(buttons_params, backups, configs)
-
-    painter.update_backup_date_labels(loggers, app.main_frame.backup_frame)
-
-    thread = threading.Thread(
-        target=checking_for_backup_date, args=(loggers, app.main_frame,), daemon=True)
-    thread.start()
+    threading.Thread(target=checking_the_backup_frame_update_flag,
+                     args=(loggers, app.main_frame, q_process,), daemon=True).start()
+    threading.Thread(target=checking_the_backup_start_flag, args=(
+        loggers, q_start, q_process,), daemon=True).start()
+    threading.Thread(target=checking_for_backup_date, args=(
+        loggers, q_start,), daemon=True).start()
 
     app.mainloop()
 
 
-def checking_for_backup_date(loggers, main_frame=None):
+def checking_for_backup_date(loggers, q_start):
     while True:
         delete_old_backup(loggers)
 
@@ -76,22 +84,25 @@ def checking_for_backup_date(loggers, main_frame=None):
         next_backup_date = tools.compute_next_backup_date(loggers)
 
         if today.timestamp() >= next_backup_date.timestamp():
-            start_backing_up(loggers, main_frame)
+            q_start.put('go', block=False, timeout=None)
 
         time.sleep(5)
 
 
-def start_backing_up(loggers, main_frame=None):
-    q = queue.Queue()
+def checking_the_backup_start_flag(loggers, q_start, q_progress):
+    while True:
+        command = q_start.get(block=True, timeout=None)
+        if command == 'go':
+            q_progress.put(0, block=False, timeout=None)
+            making_new_backup(loggers, q_progress)
 
-    if main_frame != None:
-        thread = threading.Thread(target=painter.update_backup_frame,
-                                  args=(loggers, main_frame, q,), daemon=True)
-        thread.start()
 
-    delete_old_backup(loggers)
-
-    making_new_backup(loggers, q)
+def checking_the_backup_frame_update_flag(loggers, main_frame,
+                                          q_progress):
+    while True:
+        progress = q_progress.get(block=True, timeout=None)
+        if progress == 0:
+            painter.update_backup_frame(loggers, main_frame, q_progress)
 
 
 def making_new_backup(loggers, q):
