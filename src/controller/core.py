@@ -30,7 +30,7 @@ def start_with_gui(loggers, q_start, q_process):
     config['GUI']['show_gui'] = '1'
     cfg.write_config(loggers, config)
 
-    check_gui_show_flag(loggers, app)
+    config_modifications_observing(loggers, app, [config])
 
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
@@ -42,17 +42,27 @@ def start_with_gui(loggers, q_start, q_process):
     app.mainloop()
 
 
-def check_gui_show_flag(loggers, app):
-    e = event_handler.EventHandler(show_gui, [loggers, app])
+def config_modifications_observing(loggers, app, for_config):
+    e = event_handler.EventHandler(
+        checking_config_modifications, [loggers, app, for_config])
     observer = watchdog.observers.Observer()
     observer.schedule(e, path='./', recursive=False)
     observer.start()
 
 
-def show_gui(loggers, app):
+def checking_config_modifications(loggers, app, for_config):
     if cfg.get_show_gui_flag(loggers) == '1':
-        time.sleep(1)
-        app.deiconify()
+        show_gui(loggers, app)
+
+    if cfg.get_backup_interval(loggers) != for_config[0]['General']['backup_interval']:
+        update_backup_date_labels(loggers, app.main_frame.backup_frame)
+
+    for_config[0] = cfg.get_config(loggers)
+
+
+def show_gui(loggers, app):
+    time.sleep(1)
+    app.deiconify()
 
 
 def checking_for_backup_date(loggers, q_start):
@@ -121,9 +131,8 @@ def making_new_backup(loggers, q):
 def delete_old_backup(loggers):
     try:
         today = get_today_date(loggers)
-        backup_obsolescence_date = today - \
-            datetime.timedelta(
-                float(cfg.get_file_retention_period(loggers)))
+        backup_obsolescence_date = today - datetime.timedelta(
+            float(cfg.get_file_retention_period(loggers)))
 
         tables = db.select_tables(loggers)
 
