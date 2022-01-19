@@ -14,7 +14,7 @@ class Window(tk.Tk):
         self.title('Forwards to the Past')
 
         window_width = 500
-        window_height = 260
+        window_height = 270
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -48,7 +48,7 @@ class MenuFrame(tk.Canvas):
 
 class MainFrame(tk.Canvas):
     def __init__(self, master, buttons_params, backup_dates, configs, position):
-        super().__init__(master, width=500, height=260)
+        super().__init__(master, width=500, height=270)
 
         self.backup_frame_pos = (150, 0)
         self.restoring_frame_pos = (150, 0)
@@ -240,8 +240,13 @@ class SettingsFrame(tk.Canvas):
         self.file_retention_period = file_retention_period_entry.text_var
         Label(self, 'дней', (230, first_y + (interval * 5)))
 
+        Button(self, 'Скрыть графический интерфейс',
+               buttons_params['hide_gui']['func'],
+               buttons_params['hide_gui']['args'],
+               (0, first_y + (interval * 6)))
+
         Button(self, 'Сохранить', buttons_params['save']['func'],
-               buttons_params['save']['args'], (0, 185))
+               buttons_params['save']['args'], (0, 215))
 
         self.place(x=position[0], y=position[1])
 

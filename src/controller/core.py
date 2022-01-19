@@ -18,25 +18,18 @@ import src.view.gui as gui
 def run(loggers):
     db.db_init(loggers)
 
-    q_start = queue.Queue()
-
-    if cfg.get_show_gui_flag(loggers) == '1':
-        q_process = queue.Queue()
-        start_with_gui(loggers, q_start, q_process)
-    else:
-        start_without_gui(loggers, q_start)
-
-
-def start_without_gui(loggers, q_start):
-    threading.Thread(target=checking_for_backup_date, args=(
-        loggers, q_start,), daemon=True).start()
-
-    checking_the_backup_start_flag(loggers, q_start, queue.Queue())
+    start_with_gui(loggers, q_start=queue.Queue(), q_process=queue.Queue())
 
 
 def start_with_gui(loggers, q_start, q_process):
     app = make_main_window(loggers, q_start)
 
+    config = cfg.get_config(loggers)
+    config['GUI']['show_gui'] = '1'
+    cfg.write_config(loggers, config)
+
+    threading.Thread(target=check_gui_show_flag, args=(
+        loggers, app,), daemon=True).start()
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
     threading.Thread(target=checking_the_backup_start_flag, args=(
@@ -45,6 +38,13 @@ def start_with_gui(loggers, q_start, q_process):
         loggers, q_start,), daemon=True).start()
 
     app.mainloop()
+
+
+def check_gui_show_flag(loggers, app):
+    while True:
+        if cfg.get_show_gui_flag(loggers) == '1':
+            app.deiconify()
+        time.sleep(60)
 
 
 def checking_for_backup_date(loggers, q_start):
@@ -398,6 +398,10 @@ def make_main_window(loggers, q_start):
                 'func': select_path_to_db,
                 'args': [loggers]
             },
+            'hide_gui': {
+                'func': hide_gui,
+                'args': [loggers]
+            },
             'save': {
                 'func': update_configs,
                 'args': [loggers]
@@ -418,6 +422,7 @@ def make_main_window(loggers, q_start):
         app.main_frame.settings_frame)
     buttons_params['settings']['path_to_db']['args'].append(
         app.main_frame.settings_frame)
+    buttons_params['settings']['hide_gui']['args'].append(app)
     buttons_params['settings']['save']['args'].append(
         app.main_frame.settings_frame)
 
@@ -513,3 +518,11 @@ def update_configs(loggers, settings_frame):
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
+
+
+def hide_gui(loggers, app):
+    config = cfg.get_config(loggers)
+    config['GUI']['show_gui'] = '0'
+    cfg.write_config(loggers, config)
+
+    app.withdraw()
