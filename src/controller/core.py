@@ -35,36 +35,7 @@ def start_without_gui(loggers, q_start):
 
 
 def start_with_gui(loggers, q_start, q_process):
-    buttons_params = {
-        'backup': {
-            'func': start_backuping,
-            'args': [loggers, q_start]
-        },
-        'restoring': {
-            'func': restoring_backup,
-            'args': [loggers]
-        },
-        'settings': {
-            'path_to_backup': {
-                'func': select_path_to_backup,
-                'args': [loggers]
-            },
-            'path_to_files': {
-                'func': select_path_to_files,
-                'args': [loggers]
-            },
-            'path_to_db': {
-                'func': select_path_to_db,
-                'args': [loggers]
-            },
-            'save': {
-                'func': update_configs,
-                'args': [loggers]
-            }
-        }
-    }
-
-    app = make_main_window(loggers, buttons_params)
+    app = make_main_window(loggers, q_start)
 
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
@@ -106,33 +77,37 @@ def checking_the_backup_frame_update_flag(loggers, main_frame,
 
 
 def making_new_backup(loggers, q):
-    filepaths = get_list_filepaths(
-        loggers, cfg.get_path_to_files(loggers), [])
+    try:
+        filepaths = get_list_filepaths(
+            loggers, cfg.get_path_to_files(loggers), [])
 
-    if len(filepaths) > 0:
-        progress_share = 50 / len(filepaths)
-        changes = []
-        for path in filepaths:
-            hashsum = compose_file_hashsum(loggers, path)
+        if len(filepaths) > 0:
+            progress_share = 50 / len(filepaths)
+            changes = []
+            for path in filepaths:
+                hashsum = compose_file_hashsum(loggers, path)
 
-            if not os.path.isfile(cfg.get_path_to_backup(loggers) + str(hashsum)):
-                changes.append(path)
-            q.put(progress_share, block=False, timeout=None)
+                if not os.path.isfile(cfg.get_path_to_backup(loggers) + str(hashsum)):
+                    changes.append(path)
+                q.put(progress_share, block=False, timeout=None)
 
-        table_name = compose_table_name(loggers)
-        db.create_table(loggers, table_name, ['hashsum', 'path'])
+            table_name = compose_table_name(loggers)
+            db.create_table(loggers, table_name, ['hashsum', 'path'])
 
-        progress_share = 50 / len(filepaths)
-        for path in filepaths:
-            hashsum = compose_file_hashsum(loggers, path)
-            saving_backup_files(loggers, table_name, path, hashsum)
-            if path in changes:
-                loggers['info'].info(
-                    'File {} was saved as {}'.format(path, hashsum))
-            q.put(progress_share, block=False, timeout=None)
+            progress_share = 50 / len(filepaths)
+            for path in filepaths:
+                hashsum = compose_file_hashsum(loggers, path)
+                saving_backup_files(loggers, table_name, path, hashsum)
+                if path in changes:
+                    loggers['info'].info(
+                        'File {} was saved as {}'.format(path, hashsum))
+                q.put(progress_share, block=False, timeout=None)
 
-    progress_share = 100
-    q.put(progress_share, block=False, timeout=None)
+        progress_share = 100
+        q.put(progress_share, block=False, timeout=None)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
 
 
 def delete_old_backup(loggers):
@@ -292,10 +267,17 @@ def get_list_filepaths(loggers, path, filepaths):
 
 
 def get_today_date(loggers):
-    tz = pytz.timezone(cfg.get_timezone(loggers))
-    if tz == '':
-        tz = pytz.timezone('UTC')
-    today_date = datetime.datetime.now(tz=tz)
+    today_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        tz = pytz.timezone(cfg.get_timezone(loggers))
+        if tz == '':
+            tz = pytz.timezone('UTC')
+        today_date = datetime.datetime.now(tz=tz)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()
+
     return today_date
 
 
@@ -393,11 +375,51 @@ def compute_next_backup_date(loggers, latest_backup_date=None):
 ### ### ### ### ###
 
 
-def make_main_window(loggers, buttons_params):
+def make_main_window(loggers, q_start):
+    buttons_params = {
+        'backup': {
+            'func': start_backuping,
+            'args': [loggers, q_start]
+        },
+        'restoring': {
+            'func': restoring_backup,
+            'args': [loggers]
+        },
+        'settings': {
+            'path_to_backup': {
+                'func': select_path_to_backup,
+                'args': [loggers]
+            },
+            'path_to_files': {
+                'func': select_path_to_files,
+                'args': [loggers]
+            },
+            'path_to_db': {
+                'func': select_path_to_db,
+                'args': [loggers]
+            },
+            'save': {
+                'func': update_configs,
+                'args': [loggers]
+            }
+        }
+    }
+
     backups = get_backups_list(loggers)
     configs = cfg.get_config(loggers)
 
     app = gui.Window(buttons_params, backups, configs)
+
+    buttons_params['restoring']['args'].extend(
+        [app.main_frame, app.main_frame.restoring_frame.option])
+    buttons_params['settings']['path_to_backup']['args'].append(
+        app.main_frame.settings_frame)
+    buttons_params['settings']['path_to_files']['args'].append(
+        app.main_frame.settings_frame)
+    buttons_params['settings']['path_to_db']['args'].append(
+        app.main_frame.settings_frame)
+    buttons_params['settings']['save']['args'].append(
+        app.main_frame.settings_frame)
 
     update_backup_date_labels(loggers, app.main_frame.backup_frame)
 
@@ -478,12 +500,16 @@ def start_backuping(loggers, q_start):
 
 
 def update_configs(loggers, settings_frame):
-    config = cfg.get_config(loggers)
-    config['General']['path_to_backup'] = settings_frame.path_to_backup.get()
-    config['General']['path_to_files'] = settings_frame.path_to_files.get()
-    config['General']['backup_interval'] = settings_frame.backup_interval.get()
-    config['General']['timezone'] = settings_frame.timezone.get()
-    config['DataBase']['path_to_db'] = settings_frame.path_to_db.get()
-    config['DataBase']['file_retention_period'] = settings_frame.file_retention_period.get()
+    try:
+        config = cfg.get_config(loggers)
+        config['General']['path_to_backup'] = settings_frame.path_to_backup.get()
+        config['General']['path_to_files'] = settings_frame.path_to_files.get()
+        config['General']['backup_interval'] = settings_frame.backup_interval.get()
+        config['General']['timezone'] = settings_frame.timezone.get()
+        config['DataBase']['path_to_db'] = settings_frame.path_to_db.get()
+        config['DataBase']['file_retention_period'] = settings_frame.file_retention_period.get()
 
-    cfg.write_config(loggers, config)
+        cfg.write_config(loggers, config)
+    except Exception:
+        loggers['critical'].exception('Program is terminated')
+        sys.exit()

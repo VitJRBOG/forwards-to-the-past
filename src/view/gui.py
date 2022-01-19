@@ -153,8 +153,6 @@ class RestoringFrame(tk.Canvas):
         self.option_menu = OptionMenu(self, backup_dates, (0, 30))
         self.option = self.option_menu.option
 
-        button_params['args'].append(master)
-        button_params['args'].append(self.option_menu.option)
         self.restoring_button = Button(self, 'Восстановить',
                                        button_params['func'],
                                        button_params['args'], (0, 70))
@@ -199,7 +197,6 @@ class SettingsFrame(tk.Canvas):
             self, configs['General']['path_to_backup'],
             (200, first_y), 25)
         self.path_to_backup = path_to_backup_entry.text_var
-        buttons_params['path_to_backup']['args'].append(self)
         Button(self, 'Указать', buttons_params['path_to_backup']['func'],
                buttons_params['path_to_backup']['args'], (360, first_y - 2))
 
@@ -208,7 +205,6 @@ class SettingsFrame(tk.Canvas):
             self, configs['General']['path_to_files'],
             (200, first_y + interval), 25)
         self.path_to_files = path_to_files_entry.text_var
-        buttons_params['path_to_files']['args'].append(self)
         Button(self, 'Указать', buttons_params['path_to_files']['func'],
                buttons_params['path_to_files']['args'],
                (360, first_y - 2 + interval))
@@ -232,7 +228,6 @@ class SettingsFrame(tk.Canvas):
             self, configs['DataBase']['path_to_db'],
             (200, first_y + (interval * 4)), 25)
         self.path_to_db = path_to_db_entry.text_var
-        buttons_params['path_to_db']['args'].append(self)
         Button(self, 'Указать', buttons_params['path_to_db']['func'],
                buttons_params['path_to_db']['args'],
                (360, first_y - 2 + (interval * 4)))
@@ -245,7 +240,6 @@ class SettingsFrame(tk.Canvas):
         self.file_retention_period = file_retention_period_entry.text_var
         Label(self, 'дней', (230, first_y + (interval * 5)))
 
-        buttons_params['save']['args'].append(self)
         Button(self, 'Сохранить', buttons_params['save']['func'],
                buttons_params['save']['args'], (0, 185))
 
