@@ -9,10 +9,12 @@ import datetime
 import hashlib
 import shutil
 import pytz
+import watchdog.observers
 
 import src.model.cfg as cfg
 import src.model.db as db
 import src.view.gui as gui
+import src.controller.event_handler as event_handler
 
 
 def run(loggers):
@@ -28,8 +30,8 @@ def start_with_gui(loggers, q_start, q_process):
     config['GUI']['show_gui'] = '1'
     cfg.write_config(loggers, config)
 
-    threading.Thread(target=check_gui_show_flag, args=(
-        loggers, app,), daemon=True).start()
+    check_gui_show_flag(loggers, app)
+
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
     threading.Thread(target=checking_the_backup_start_flag, args=(
@@ -41,10 +43,16 @@ def start_with_gui(loggers, q_start, q_process):
 
 
 def check_gui_show_flag(loggers, app):
-    while True:
-        if cfg.get_show_gui_flag(loggers) == '1':
-            app.deiconify()
-        time.sleep(60)
+    e = event_handler.EventHandler(show_gui, [loggers, app])
+    observer = watchdog.observers.Observer()
+    observer.schedule(e, path='./', recursive=False)
+    observer.start()
+
+
+def show_gui(loggers, app):
+    if cfg.get_show_gui_flag(loggers) == '1':
+        time.sleep(1)
+        app.deiconify()
 
 
 def checking_for_backup_date(loggers, q_start):
