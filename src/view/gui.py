@@ -7,9 +7,11 @@ import tkinter.filedialog as filedialog
 import threading
 import datetime
 
+import src.model.db as db
+
 
 class Window(tk.Tk):
-    def __init__(self, buttons_params, backup_dates, configs):
+    def __init__(self, loggers, buttons_params, backup_dates, configs):
         super().__init__()
         self.title('Forwards to the Past')
 
@@ -28,7 +30,7 @@ class Window(tk.Tk):
         self.maxsize(window_width, window_height)
 
         self.main_frame = MainFrame(
-            self, buttons_params, backup_dates, configs, (0, 20))
+            self, loggers, buttons_params, backup_dates, configs, (0, 20))
         MenuFrame(self, self.main_frame, (0, 0))
 
 
@@ -47,17 +49,17 @@ class MenuFrame(tk.Canvas):
 
 
 class MainFrame(tk.Canvas):
-    def __init__(self, master, buttons_params, backup_dates, configs, position):
+    def __init__(self, master, loggers, buttons_params, backup_dates, configs, position):
         super().__init__(master, width=500, height=270)
 
         self.backup_frame_pos = (150, 0)
-        self.restoring_frame_pos = (150, 0)
+        self.restoring_frame_pos = (45, 0)
         self.settings_frame_pos = (45, 0)
 
         self.backup_frame = BackupFrame(
             self, buttons_params['backup'], self.backup_frame_pos)
         self.restoring_frame = RestoringFrame(
-            self, buttons_params['restoring'],
+            self, loggers, buttons_params['restoring'],
             backup_dates, self.backup_frame_pos)
         self.restoring_frame.place_forget()
         self.settings_frame = SettingsFrame(
@@ -147,28 +149,51 @@ class BackupFrame(tk.Canvas):
 
 
 class RestoringFrame(tk.Canvas):
-    def __init__(self, master, button_params, backup_dates, position):
-        super().__init__(master)
+    def __init__(self, master, loggers, button_params, backup_dates, position):
+        self.loggers = loggers
 
-        self.option_menu = OptionMenu(self, backup_dates, (0, 30))
+        super().__init__(master, width=420, height=235)
+
+        self.option_menu = OptionMenu(
+            self, self.update_files_table, backup_dates, (0, 30))
         self.option = self.option_menu.option
 
         self.restoring_button = Button(self, 'Восстановить',
                                        button_params['func'],
-                                       button_params['args'], (0, 70))
+                                       button_params['args'],
+                                       (150, 32))
 
-        self.progress_bar = ProgressBar(self, (0, 70))
+        self.progress_bar = ProgressBar(self, (150, 30))
         self.progress_bar.place_forget()
+
+        self.files_table = Table(self,
+                                 [[375], ['Полный путь']],
+                                 (5, 70))
 
         self.place(x=position[0], y=position[1])
 
-    def update_backup_dates(self, backup_dates):
+    def update_backup_dates(self, backup_dates, *args):
         menu = self.option_menu["menu"]
         menu.delete(0, "end")
         for item in backup_dates:
             menu.add_command(label=item,
                              command=lambda value=item:
                              self.option.set(value))
+
+    def update_files_table(self, event):
+        self.files_table.delete(*self.files_table.get_children())
+
+        table_name = datetime.datetime.strptime(
+            self.option.get(), '%d.%m.%Y %H:%M:%S').timestamp()
+
+        backup_files = db.select_files(self.loggers, int(table_name))
+
+        data = []
+
+        for item in backup_files:
+            data.append([item.path])
+
+        self.files_table.insert_data(data)
 
     def hide_progress_bar_show_button(self):
         self.progress_bar.place_forget()
@@ -257,6 +282,32 @@ class ProgressBar(ttk.Progressbar):
         self.place(x=position[0], y=position[1])
 
 
+class Table(ttk.Treeview):
+    def __init__(self, master, column_params, position):
+        frame = tk.Frame(master)
+
+        super().__init__(frame, height=7)
+
+        self['columns'] = column_params[1]
+        self['show'] = 'headings'
+        for i, _ in enumerate(column_params[0]):
+            self.heading(column_params[1][i], text=column_params[1][i])
+            self.column(column_params[1][i], width=column_params[0][i])
+
+        self.pack(side='left')
+
+        treescroll = tk.Scrollbar(frame, orient='vertical', command=self.yview)
+        self.configure(yscrollcommand=treescroll.set)
+
+        treescroll.pack(side='right', fill='y')
+
+        frame.place(x=position[0], y=position[1])
+
+    def insert_data(self, data):
+        for row in data:
+            self.insert('', 'end', values=row)
+
+
 class Button(tk.Button):
     def __init__(self, master, text, command, command_params, position):
         super().__init__(master, text=text, command=lambda: threading.Thread(
@@ -265,7 +316,7 @@ class Button(tk.Button):
 
 
 class OptionMenu(tk.OptionMenu):
-    def __init__(self, master, options, coordinates):
+    def __init__(self, master, command, options, coordinates):
         self.option = tk.StringVar(master)
         if len(options) > 0:
             self.option.set(options[len(options)-1])
@@ -273,7 +324,7 @@ class OptionMenu(tk.OptionMenu):
             self.option.set('')
             options.append('')
 
-        super().__init__(master, self.option, *options)
+        super().__init__(master, self.option, *options, command=command)
         self.place(x=coordinates[0], y=coordinates[1])
 
 

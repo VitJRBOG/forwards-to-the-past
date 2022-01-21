@@ -429,7 +429,7 @@ def make_main_window(loggers, q_start):
     backups = get_backups_list(loggers)
     configs = cfg.get_config(loggers)
 
-    app = gui.Window(buttons_params, backups, configs)
+    app = gui.Window(loggers, buttons_params, backups, configs)
 
     buttons_params['restoring']['args'].extend(
         [app.main_frame, app.main_frame.restoring_frame.option])
