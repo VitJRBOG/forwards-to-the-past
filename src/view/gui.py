@@ -173,12 +173,10 @@ class RestoringFrame(tk.Canvas):
         self.place(x=position[0], y=position[1])
 
     def update_backup_dates(self, backup_dates, *args):
-        menu = self.option_menu["menu"]
-        menu.delete(0, "end")
-        for item in backup_dates:
-            menu.add_command(label=item,
-                             command=lambda value=item:
-                             self.option.set(value))
+        self.option_menu.destroy()
+        self.option_menu = OptionMenu(
+            self, self.update_files_table, backup_dates, (0, 30))
+        self.option = self.option_menu.option
 
     def update_files_table(self, event):
         self.files_table.delete(*self.files_table.get_children())

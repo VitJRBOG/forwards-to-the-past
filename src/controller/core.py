@@ -168,15 +168,16 @@ def delete_old_backup(loggers):
         sys.exit()
 
 
-def restoring_backup(loggers, main_frame, backup_date):
+def restoring_backup(loggers, main_frame):
     try:
         q = queue.Queue()
 
         threading.Thread(target=update_restoring_frame,
                          args=(loggers, main_frame, q,), daemon=True).start()
 
+        backup_date = main_frame.restoring_frame.option.get()
         table_name = datetime.datetime.strptime(
-            backup_date.get(), '%d.%m.%Y %H:%M:%S').timestamp()
+            backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
 
         backup_files = db.select_files(loggers, int(table_name))
 
@@ -431,8 +432,7 @@ def make_main_window(loggers, q_start):
 
     app = gui.Window(loggers, buttons_params, backups, configs)
 
-    buttons_params['restoring']['args'].extend(
-        [app.main_frame, app.main_frame.restoring_frame.option])
+    buttons_params['restoring']['args'].extend([app.main_frame])
     buttons_params['settings']['path_to_backup']['args'].append(
         app.main_frame.settings_frame)
     buttons_params['settings']['path_to_files']['args'].append(
