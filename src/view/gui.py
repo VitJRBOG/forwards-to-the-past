@@ -6,6 +6,8 @@ import tkinter.ttk as ttk
 import tkinter.filedialog as filedialog
 import threading
 import datetime
+import shutil
+import os
 
 import src.model.db as db
 
@@ -301,9 +303,28 @@ class Table(ttk.Treeview):
 
         frame.place(x=position[0], y=position[1])
 
+        self.bind('<Button-3>', self.show_menu)
+
     def insert_data(self, data):
         for row in data:
             self.insert('', 'end', values=row)
+
+    def show_menu(self, event):
+        menu = Menu(self, [{'name': 'Копировать', 'func': self.copy_file}])
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def copy_file(self):
+        selected_item = self.focus()
+        filepath = self.item(selected_item)['values'][0]
+
+        filename = os.path.basename(filepath)
+
+        dest_dir = open_dir_dialog()
+
+        shutil.copyfile(filepath, os.path.join(dest_dir, filename))
 
 
 class Button(tk.Button):
@@ -324,6 +345,13 @@ class OptionMenu(tk.OptionMenu):
 
         super().__init__(master, self.option, *options, command=command)
         self.place(x=coordinates[0], y=coordinates[1])
+
+
+class Menu(tk.Menu):
+    def __init__(self, master, options):
+        super().__init__(master, tearoff=0)
+        for item in options:
+            self.add_command(label=item['name'], command=item['func'])
 
 
 class Label(tk.Label):
