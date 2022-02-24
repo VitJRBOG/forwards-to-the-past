@@ -195,11 +195,11 @@ class RestoringFrame(tk.Canvas):
 
     def hide_progress_bar_show_button(self):
         self.progress_bar.place_forget()
-        self.restoring_button.place(x=0, y=70)
+        self.restoring_button.place(x=150, y=32)
 
     def hide_button_show_progressbar(self):
         self.restoring_button.place_forget()
-        self.progress_bar.place(x=0, y=70)
+        self.progress_bar.place(x=150, y=35)
 
     def update_progress_bar(self, progress):
         if progress == 0 or progress == 100:
