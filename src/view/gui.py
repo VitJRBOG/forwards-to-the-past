@@ -6,8 +6,6 @@ import tkinter.ttk as ttk
 import tkinter.filedialog as filedialog
 import threading
 import datetime
-import shutil
-import os
 
 import src.model.db as db
 
@@ -156,14 +154,14 @@ class RestoringFrame(tk.Canvas):
 
         super().__init__(master, width=420, height=235)
 
-        self.option_menu = OptionMenu(
-            self, self.update_files_table, backup_dates, (0, 30))
-        self.option = self.option_menu.option
+        self.combobox = Combobox(
+            self, self.update_files_table, backup_dates, (0, 33))
+        self.option = self.combobox.option
 
         self.restoring_button = Button(self, 'Восстановить',
                                        button_params['restore']['func'],
                                        button_params['restore']['args'],
-                                       (150, 32))
+                                       (150, 30))
 
         self.progress_bar = ProgressBar(self, (150, 30))
         self.progress_bar.place_forget()
@@ -177,10 +175,10 @@ class RestoringFrame(tk.Canvas):
         self.place(x=position[0], y=position[1])
 
     def update_backup_dates(self, backup_dates, *args):
-        self.option_menu.destroy()
-        self.option_menu = OptionMenu(
+        self.combobox.destroy()
+        self.combobox = Combobox(
             self, self.update_files_table, backup_dates, (0, 30))
-        self.option = self.option_menu.option
+        self.option = self.combobox.option
 
     def update_files_table(self, event):
         self.files_table.delete(*self.files_table.get_children())
@@ -333,7 +331,7 @@ class Button(tk.Button):
         self.place(x=position[0], y=position[1])
 
 
-class OptionMenu(tk.OptionMenu):
+class Combobox(ttk.Combobox):
     def __init__(self, master, command, options, coordinates):
         self.option = tk.StringVar(master)
         if len(options) > 0:
@@ -342,7 +340,10 @@ class OptionMenu(tk.OptionMenu):
             self.option.set('')
             options.append('')
 
-        super().__init__(master, self.option, *options, command=command)
+        super().__init__(master, textvariable=self.option, values=options,
+                         state='readonly')
+        self.bind('<<ComboboxSelected>>', command)
+
         self.place(x=coordinates[0], y=coordinates[1])
 
 
