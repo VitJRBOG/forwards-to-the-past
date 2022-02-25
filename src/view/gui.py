@@ -161,8 +161,8 @@ class RestoringFrame(tk.Canvas):
         self.option = self.option_menu.option
 
         self.restoring_button = Button(self, 'Восстановить',
-                                       button_params['func'],
-                                       button_params['args'],
+                                       button_params['restore']['func'],
+                                       button_params['restore']['args'],
                                        (150, 32))
 
         self.progress_bar = ProgressBar(self, (150, 30))
@@ -170,6 +170,8 @@ class RestoringFrame(tk.Canvas):
 
         self.files_table = Table(self,
                                  [[375], ['Полный путь']],
+                                 button_params['copy']['func'],
+                                 button_params['copy']['args'],
                                  (5, 70))
 
         self.place(x=position[0], y=position[1])
@@ -283,7 +285,7 @@ class ProgressBar(ttk.Progressbar):
 
 
 class Table(ttk.Treeview):
-    def __init__(self, master, column_params, position):
+    def __init__(self, master, column_params, command, command_params, position):
         frame = tk.Frame(master)
 
         super().__init__(frame, height=7)
@@ -303,29 +305,20 @@ class Table(ttk.Treeview):
 
         frame.place(x=position[0], y=position[1])
 
-        self.bind('<Button-3>', self.show_menu)
+        self.bind('<Button-3>', lambda event: self.show_menu(event,
+                  command, command_params))
 
     def insert_data(self, data):
         for row in data:
             self.insert('', 'end', values=row)
 
-    def show_menu(self, event):
+    def show_menu(self, event, command, command_params):
         menu = Menu(
-            self, [{'name': 'Копировать в...', 'func': self.copy_file}])
+            self, [{'name': 'Копировать в...', 'func': lambda: command(*command_params)}])
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
-
-    def copy_file(self):
-        selected_item = self.focus()
-        filepath = self.item(selected_item)['values'][0]
-
-        filename = os.path.basename(filepath)
-
-        dest_dir = open_dir_dialog()
-
-        shutil.copyfile(filepath, os.path.join(dest_dir, filename))
 
 
 class Button(tk.Button):

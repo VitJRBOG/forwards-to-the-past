@@ -400,8 +400,14 @@ def make_main_window(loggers, q_start):
             'args': [loggers, q_start]
         },
         'restoring': {
-            'func': restoring_backup,
-            'args': [loggers]
+            'restore': {
+                'func': restoring_backup,
+                'args': [loggers]
+            },
+            'copy': {
+                'func': copying_backuped_file,
+                'args': [loggers]
+            }
         },
         'settings': {
             'path_to_backup': {
@@ -432,7 +438,9 @@ def make_main_window(loggers, q_start):
 
     app = gui.Window(loggers, buttons_params, backups, configs)
 
-    buttons_params['restoring']['args'].extend([app.main_frame])
+    buttons_params['restoring']['restore']['args'].extend([app.main_frame])
+    buttons_params['restoring']['copy']['args'].extend(
+        [app.main_frame.restoring_frame])
     buttons_params['settings']['path_to_backup']['args'].append(
         app.main_frame.settings_frame)
     buttons_params['settings']['path_to_files']['args'].append(
@@ -535,6 +543,30 @@ def update_configs(loggers, settings_frame):
     except Exception:
         loggers['critical'].exception('Program is terminated')
         sys.exit()
+
+
+def copying_backuped_file(loggers, restoring_frame):
+    backup_date = restoring_frame.option.get()
+    table_name = datetime.datetime.strptime(
+        backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
+
+    backup_files = db.select_files(loggers, int(table_name))
+
+    selected_item = restoring_frame.files_table.focus()
+    filepath = restoring_frame.files_table.item(selected_item)['values'][0]
+
+    backuped_file_path = ''
+
+    for item in backup_files:
+        if item.path == filepath:
+            backuped_file_path = '{}{}'.format(
+                cfg.get_path_to_backup(loggers), item.hashsum)
+
+    filename = os.path.basename(filepath)
+
+    dest_dir = gui.open_dir_dialog()
+
+    shutil.copyfile(backuped_file_path, os.path.join(dest_dir, filename))
 
 
 def hide_gui(loggers, app):
