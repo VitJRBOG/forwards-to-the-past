@@ -310,7 +310,8 @@ class Table(ttk.Treeview):
             self.insert('', 'end', values=row)
 
     def show_menu(self, event):
-        menu = Menu(self, [{'name': 'Копировать', 'func': self.copy_file}])
+        menu = Menu(
+            self, [{'name': 'Копировать в...', 'func': self.copy_file}])
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
