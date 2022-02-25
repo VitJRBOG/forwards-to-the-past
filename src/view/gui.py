@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import tkinter as tk
-from tkinter.constants import HORIZONTAL
+from tkinter.constants import VERTICAL, HORIZONTAL
 import tkinter.ttk as ttk
 import tkinter.filedialog as filedialog
 import threading
@@ -288,7 +288,7 @@ class Table(ttk.Treeview):
     def __init__(self, master, column_params, command, command_params, position):
         frame = tk.Frame(master)
 
-        super().__init__(frame, height=7)
+        super().__init__(frame, height=5)
 
         self['columns'] = column_params[1]
         self['show'] = 'headings'
@@ -296,12 +296,17 @@ class Table(ttk.Treeview):
             self.heading(column_params[1][i], text=column_params[1][i])
             self.column(column_params[1][i], width=column_params[0][i])
 
-        self.pack(side='left')
+        self.pack(side='top')
 
-        treescroll = tk.Scrollbar(frame, orient='vertical', command=self.yview)
-        self.configure(yscrollcommand=treescroll.set)
+        vtreescroll = tk.Scrollbar(
+            frame, orient=VERTICAL, command=self.yview)
+        htreescroll = tk.Scrollbar(
+            frame, orient=HORIZONTAL, command=self.xview)
+        self.configure(yscrollcommand=vtreescroll.set)
+        self.configure(xscrollcommand=htreescroll.set)
 
-        treescroll.pack(side='right', fill='y')
+        # vtreescroll.pack(side='right', fill='y')
+        htreescroll.pack(side='bottom', fill='x')
 
         frame.place(x=position[0], y=position[1])
 
