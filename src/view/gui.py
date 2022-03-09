@@ -378,7 +378,7 @@ def open_filedialog():
     return path
 
 
-def open_dir_dialog():
-    path = filedialog.askdirectory()
+def open_dir_dialog(title):
+    path = filedialog.askdirectory(title=title)
 
     return path

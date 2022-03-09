@@ -23,6 +23,26 @@ def run(loggers):
     start_with_gui(loggers, q_start=queue.Queue(), q_process=queue.Queue())
 
 
+def initialization(loggers):
+    config = cfg.get_config(loggers)
+
+    if config['General']['path_to_backup'] == '':
+        title = 'Выберите папку для хранения резервных копий'
+        config['General']['path_to_backup'] = os.path.join(
+            gui.open_dir_dialog(title))
+        cfg.write_config(loggers, config)
+
+    if config['General']['path_to_files'] == '':
+        title = 'Выберите папку для создания резервной копии'
+        config['General']['path_to_files'] = os.path.join(
+            gui.open_dir_dialog(title))
+        cfg.write_config(loggers, config)
+
+    if config['General']['timezone'] == '':
+        config['General']['timezone'] = 'Asia/Yekaterinburg'
+        cfg.write_config(loggers, config)
+
+
 def start_with_gui(loggers, q_start, q_process):
     app = make_main_window(loggers, q_start)
 
@@ -31,6 +51,8 @@ def start_with_gui(loggers, q_start, q_process):
     cfg.write_config(loggers, config)
 
     config_modifications_observing(loggers, app, [config])
+
+    initialization(loggers)
 
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
