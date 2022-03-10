@@ -242,11 +242,13 @@ class SettingsFrame(tk.Canvas):
         self.backup_interval = backup_interval_entry.text_var
         Label(self, 'дней', (230, first_y + (interval * 2)))
 
+        timezones = ['Europe/Moscow', 'Europe/Samara', 'Asia/Yekaterinburg']
+
         Label(self, 'Часовой пояс', (0, first_y + (interval * 3)))
-        timezone_entry = Entry(
-            self, configs['General']['timezone'],
-            (200, first_y + (interval * 3)), 25)
-        self.timezone = timezone_entry.text_var
+        timezone_combobox = Combobox(
+            self, None, timezones, (200, first_y + (interval * 3)))
+        timezone_combobox.option.set(configs['General']['timezone'])
+        self.timezone = timezone_combobox.option
 
         Label(self, 'Путь к базе данных', (0, first_y + (interval * 4)))
         path_to_db_entry = Entry(
@@ -342,7 +344,9 @@ class Combobox(ttk.Combobox):
 
         super().__init__(master, textvariable=self.option, values=options,
                          state='readonly')
-        self.bind('<<ComboboxSelected>>', command)
+
+        if command is not None:
+            self.bind('<<ComboboxSelected>>', command)
 
         self.place(x=coordinates[0], y=coordinates[1])
 
