@@ -29,13 +29,13 @@ def initialization(loggers):
     if config['General']['path_to_backup'] == '':
         title = 'Выберите папку для хранения резервных копий'
         config['General']['path_to_backup'] = os.path.join(
-            gui.open_dir_dialog(title))
+            gui.open_dir_dialog(title), '')
         cfg.write_config(loggers, config)
 
     if config['General']['path_to_files'] == '':
         title = 'Выберите папку для создания резервной копии'
         config['General']['path_to_files'] = os.path.join(
-            gui.open_dir_dialog(title))
+            gui.open_dir_dialog(title), '')
         cfg.write_config(loggers, config)
 
     if config['General']['timezone'] == '':
