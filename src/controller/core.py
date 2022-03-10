@@ -586,7 +586,7 @@ def copying_backuped_file(loggers, restoring_frame):
 
     filename = os.path.basename(filepath)
 
-    dest_dir = gui.open_dir_dialog()
+    dest_dir = gui.open_dir_dialog('Выберите папку для сохранения файла')
 
     shutil.copyfile(backuped_file_path, os.path.join(dest_dir, filename))
 
