@@ -16,7 +16,7 @@ class Window(tk.Tk):
         self.title('Forwards to the Past')
 
         window_width = 500
-        window_height = 270
+        window_height = 300
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -50,7 +50,7 @@ class MenuFrame(tk.Canvas):
 
 class MainFrame(tk.Canvas):
     def __init__(self, master, loggers, buttons_params, backup_dates, configs, position):
-        super().__init__(master, width=500, height=270)
+        super().__init__(master, width=500, height=300)
 
         self.backup_frame_pos = (150, 0)
         self.restoring_frame_pos = (45, 0)
@@ -212,7 +212,7 @@ class RestoringFrame(tk.Canvas):
 
 class SettingsFrame(tk.Canvas):
     def __init__(self, master, buttons_params, configs, position):
-        super().__init__(master, width=410, height=250)
+        super().__init__(master, width=410, height=280)
 
         first_y = 30
         interval = 25
@@ -267,13 +267,18 @@ class SettingsFrame(tk.Canvas):
         self.file_retention_period = file_retention_period_entry.text_var
         Label(self, 'дней', (230, first_y + (interval * 5)))
 
+        Label(self, 'Запускать скрыто', (0, first_y + (interval * 6)))
+        Checkbutton(self, buttons_params['hide_startup']['func'],
+                    buttons_params['hide_startup']['args'],
+                    (195, first_y + (interval * 6)))
+
         Button(self, 'Скрыть графический интерфейс',
                buttons_params['hide_gui']['func'],
                buttons_params['hide_gui']['args'],
-               (0, first_y + (interval * 6)))
+               (0, first_y + (interval * 7)))
 
         Button(self, 'Сохранить', buttons_params['save']['func'],
-               buttons_params['save']['args'], (0, 215))
+               buttons_params['save']['args'], (0, 235))
 
         self.place(x=position[0], y=position[1])
 
@@ -330,6 +335,23 @@ class Button(tk.Button):
     def __init__(self, master, text, command, command_params, position):
         super().__init__(master, text=text, command=lambda: threading.Thread(
             target=command, args=(command_params), daemon=True).start())
+        self.place(x=position[0], y=position[1])
+
+
+class Checkbutton(tk.Checkbutton):
+    def __init__(self, master, command, command_params, position):
+        self.var = tk.BooleanVar()
+
+        if command_params[1] == '1':
+            self.var.set(1)
+        elif command_params[1] == '0':
+            self.var.set(0)
+
+        super().__init__(master, variable=self.var,
+                         command=lambda: threading.Thread(
+                             target=command,
+                             args=(command_params),
+                             daemon=True).start())
         self.place(x=position[0], y=position[1])
 
 

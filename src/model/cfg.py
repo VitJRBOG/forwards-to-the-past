@@ -40,6 +40,11 @@ def get_show_gui_flag(loggers):
     return config['GUI']['show_gui']
 
 
+def get_hide_startup_flag(loggers):
+    config = get_config(loggers)
+    return config['GUI']['hide_startup']
+
+
 def get_config(loggers):
     config = configparser.ConfigParser()
 
@@ -79,7 +84,8 @@ def __make_default_config(loggers):
             'file_retention_period': 30
         }
         config['GUI'] = {
-            'show_gui': 1
+            'show_gui': 1,
+            'hide_startup': 0
         }
 
         with open('config.ini', 'w') as f:

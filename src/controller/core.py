@@ -54,6 +54,9 @@ def start_with_gui(loggers, q_start, q_process):
 
     initialization(loggers)
 
+    if config['GUI']['hide_startup'] == '1':
+        hide_gui(loggers, app)
+
     threading.Thread(target=checking_the_backup_frame_update_flag,
                      args=(loggers, app.main_frame, q_process,), daemon=True).start()
     threading.Thread(target=checking_the_backup_start_flag, args=(
@@ -444,6 +447,10 @@ def make_main_window(loggers, q_start):
                 'func': select_path_to_db,
                 'args': [loggers]
             },
+            'hide_startup': {
+                'func': switch_hide_startup,
+                'args': [loggers, cfg.get_hide_startup_flag(loggers)]
+            },
             'hide_gui': {
                 'func': hide_gui,
                 'args': [loggers]
@@ -589,6 +596,18 @@ def copying_backuped_file(loggers, restoring_frame):
     dest_dir = gui.open_dir_dialog('Выберите папку для сохранения файла')
 
     shutil.copyfile(backuped_file_path, os.path.join(dest_dir, filename))
+
+
+def switch_hide_startup(loggers, hide_startup_flag):
+    config = cfg.get_config(loggers)
+    if config['GUI']['hide_startup'] == '0':
+        config['GUI']['hide_startup'] = '1'
+        hide_startup_flag = '1'
+    elif config['GUI']['hide_startup'] == '1':
+        config['GUI']['hide_startup'] = '0'
+        hide_startup_flag = '0'
+
+    cfg.write_config(loggers, config)
 
 
 def hide_gui(loggers, app):
