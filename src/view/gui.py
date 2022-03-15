@@ -91,9 +91,9 @@ class BackupFrame(tk.Canvas):
     def __init__(self, master, button_params, position):
         super().__init__(master)
 
-        oldest_backup_label = Label(self, '', (0, 60))
-        latest_backup_label = Label(self, '', (0, 90))
-        next_backup_label = Label(self, '', (0, 120))
+        oldest_backup_label = Label(self, '', (0, 80))
+        latest_backup_label = Label(self, '', (0, 110))
+        next_backup_label = Label(self, '', (0, 140))
 
         self.oldest_backup = oldest_backup_label.text_var
         self.latest_backup = latest_backup_label.text_var
@@ -102,9 +102,9 @@ class BackupFrame(tk.Canvas):
         self.backup_button = Button(
             self, 'Запустить сейчас',
             button_params['func'],
-            button_params['args'], (0, 155))
+            button_params['args'], (0, 175))
 
-        self.progress_bar = ProgressBar(self, (0, 155))
+        self.progress_bar = ProgressBar(self, (0, 175))
         self.progress_bar.place_forget()
 
         self.place(x=position[0], y=position[1])
@@ -135,11 +135,11 @@ class BackupFrame(tk.Canvas):
 
     def hide_progress_bar_show_buttons(self):
         self.progress_bar.place_forget()
-        self.backup_button.place(x=0, y=155)
+        self.backup_button.place(x=0, y=175)
 
     def hide_buttons_show_progressbar(self):
         self.backup_button.place_forget()
-        self.progress_bar.place(x=0, y=155)
+        self.progress_bar.place(x=0, y=175)
 
     def update_progress_bar(self, progress):
         if progress == 0 or progress == 100:
@@ -197,11 +197,11 @@ class RestoringFrame(tk.Canvas):
 
     def hide_progress_bar_show_button(self):
         self.progress_bar.place_forget()
-        self.restoring_button.place(x=150, y=32)
+        self.restoring_button.place(x=150, y=30)
 
     def hide_button_show_progressbar(self):
         self.restoring_button.place_forget()
-        self.progress_bar.place(x=150, y=35)
+        self.progress_bar.place(x=150, y=33)
 
     def update_progress_bar(self, progress):
         if progress == 0 or progress == 100:
@@ -293,7 +293,7 @@ class Table(ttk.Treeview):
     def __init__(self, master, column_params, command, command_params, position):
         frame = tk.Frame(master)
 
-        super().__init__(frame, height=5)
+        super().__init__(frame, height=6)
 
         self['columns'] = column_params[1]
         self['show'] = 'headings'
