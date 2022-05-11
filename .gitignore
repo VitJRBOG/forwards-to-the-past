@@ -1,11 +1,17 @@
 # OS files
 .DS_Store
 
+# PyCharm files
+.idea
+
 # VS Code files
 .vscode/
 
 # Python cache files
 __pycache__
+
+# Python virtual env
+.venv
 
 # Project derivatives
 junk/
