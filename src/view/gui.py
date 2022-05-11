@@ -10,10 +10,15 @@ import datetime
 import src.model.db as db
 
 
+VERSION_ = '0.3.0-beta'
+
+
 class Window(tk.Tk):
     def __init__(self, loggers, buttons_params, backup_dates, configs):
+        global VERSION_
+
         super().__init__()
-        self.title('Forwards to the Past')
+        self.title('Forwards to the Past (v{})'.format(VERSION_))
 
         window_width = 500
         window_height = 300
