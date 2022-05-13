@@ -10,11 +10,11 @@ import datetime
 import src.model.db as db
 
 
-VERSION_ = '0.3.1-beta'
+VERSION_ = '0.4.0-beta'
 
 
 class Window(tk.Tk):
-    def __init__(self, loggers, buttons_params, backup_dates, configs):
+    def __init__(self, buttons_params, backup_dates, configs):
         global VERSION_
 
         super().__init__()
@@ -35,7 +35,7 @@ class Window(tk.Tk):
         self.maxsize(window_width, window_height)
 
         self.main_frame = MainFrame(
-            self, loggers, buttons_params, backup_dates, configs, (0, 20))
+            self, buttons_params, backup_dates, configs, (0, 20))
         MenuFrame(self, self.main_frame, (0, 0))
 
 
@@ -54,7 +54,7 @@ class MenuFrame(tk.Canvas):
 
 
 class MainFrame(tk.Canvas):
-    def __init__(self, master, loggers, buttons_params, backup_dates, configs, position):
+    def __init__(self, master, buttons_params, backup_dates, configs, position):
         super().__init__(master, width=500, height=300)
 
         self.backup_frame_pos = (150, 0)
@@ -64,7 +64,7 @@ class MainFrame(tk.Canvas):
         self.backup_frame = BackupFrame(
             self, buttons_params['backup'], self.backup_frame_pos)
         self.restoring_frame = RestoringFrame(
-            self, loggers, buttons_params['restoring'],
+            self, buttons_params['restoring'],
             backup_dates, self.backup_frame_pos)
         self.restoring_frame.place_forget()
         self.settings_frame = SettingsFrame(
@@ -154,9 +154,7 @@ class BackupFrame(tk.Canvas):
 
 
 class RestoringFrame(tk.Canvas):
-    def __init__(self, master, loggers, button_params, backup_dates, position):
-        self.loggers = loggers
-
+    def __init__(self, master, button_params, backup_dates, position):
         super().__init__(master, width=420, height=235)
 
         self.combobox = Combobox(
@@ -191,7 +189,7 @@ class RestoringFrame(tk.Canvas):
         table_name = datetime.datetime.strptime(
             self.option.get(), '%d.%m.%Y %H:%M:%S').timestamp()
 
-        backup_files = db.select_files(self.loggers, int(table_name))
+        backup_files = db.select_files(int(table_name))
 
         data = []
 
@@ -347,9 +345,9 @@ class Checkbutton(tk.Checkbutton):
     def __init__(self, master, command, command_params, position):
         self.var = tk.BooleanVar()
 
-        if command_params[1] == '1':
+        if command_params[0] == '1':
             self.var.set(1)
-        elif command_params[1] == '0':
+        elif command_params[0] == '0':
             self.var.set(0)
 
         super().__init__(master, variable=self.var,

@@ -13,89 +13,90 @@ import watchdog.observers
 
 import src.model.cfg as cfg
 import src.model.db as db
+import src.model.logging as logging
 import src.view.gui as gui
 import src.controller.event_handler as event_handler
 
 
-def run(loggers):
-    db.db_init(loggers)
+def run():
+    db.db_init()
 
-    start_with_gui(loggers, q_start=queue.Queue(), q_process=queue.Queue())
+    start_with_gui(q_start=queue.Queue(), q_process=queue.Queue())
 
 
-def initialization(loggers):
-    config = cfg.get_config(loggers)
+def initialization():
+    config = cfg.get_config()
 
     if config['General']['path_to_backup'] == '':
         title = 'Выберите папку для хранения резервных копий'
         config['General']['path_to_backup'] = os.path.join(
             gui.open_dir_dialog(title), '')
-        cfg.write_config(loggers, config)
+        cfg.write_config(config)
 
     if config['General']['path_to_files'] == '':
         title = 'Выберите папку для создания резервной копии'
         config['General']['path_to_files'] = os.path.join(
             gui.open_dir_dialog(title), '')
-        cfg.write_config(loggers, config)
+        cfg.write_config(config)
 
     if config['General']['timezone'] == '':
         config['General']['timezone'] = 'Asia/Yekaterinburg'
-        cfg.write_config(loggers, config)
+        cfg.write_config(config)
 
 
-def start_with_gui(loggers, q_start, q_process):
-    app = make_main_window(loggers, q_start)
+def start_with_gui(q_start, q_process):
+    app = make_main_window(q_start)
 
-    config = cfg.get_config(loggers)
+    config = cfg.get_config()
     config['GUI']['show_gui'] = '1'
-    cfg.write_config(loggers, config)
+    cfg.write_config(config)
 
-    config_modifications_observing(loggers, app, [config])
+    config_modifications_observing(app, [config])
 
-    initialization(loggers)
+    initialization()
 
     if config['GUI']['hide_startup'] == '1':
-        hide_gui(loggers, app)
+        hide_gui(app)
 
     threading.Thread(target=checking_the_backup_frame_update_flag,
-                     args=(loggers, app.main_frame, q_process,), daemon=True).start()
+                     args=(app.main_frame, q_process,), daemon=True).start()
     threading.Thread(target=checking_the_backup_start_flag, args=(
-        loggers, q_start, q_process,), daemon=True).start()
+        q_start, q_process,), daemon=True).start()
     threading.Thread(target=checking_for_backup_date, args=(
-        loggers, q_start,), daemon=True).start()
+        q_start,), daemon=True).start()
 
     app.mainloop()
 
 
-def config_modifications_observing(loggers, app, for_config):
+def config_modifications_observing(app, for_config):
     e = event_handler.EventHandler(
-        checking_config_modifications, [loggers, app, for_config])
+        checking_config_modifications, [app, for_config])
     observer = watchdog.observers.Observer()
     observer.schedule(e, path='./', recursive=False)
     observer.start()
 
 
-def checking_config_modifications(loggers, app, for_config):
-    if cfg.get_show_gui_flag(loggers) == '1':
-        show_gui(loggers, app)
+def checking_config_modifications(app, for_config):
+    if cfg.get_show_gui_flag() == '1':
+        show_gui(app)
 
-    if cfg.get_backup_interval(loggers) != for_config[0]['General']['backup_interval']:
-        update_backup_date_labels(loggers, app.main_frame.backup_frame)
+    if cfg.get_backup_interval() != for_config[0]['General']['backup_interval']:
+        update_backup_date_labels(app.main_frame.backup_frame)
 
-    for_config[0] = cfg.get_config(loggers)
+    for_config[0] = cfg.get_config()
 
 
-def show_gui(loggers, app):
+def show_gui(app):
     time.sleep(1)
     app.deiconify()
 
 
-def checking_for_backup_date(loggers, q_start):
+def checking_for_backup_date(q_start):
     while True:
-        delete_old_backup(loggers)
+        delete_old_backup()
 
-        today = get_today_date(loggers)
-        next_backup_date = compute_next_backup_date(loggers)
+        today = get_today_date()
+        next_backup_date = compute_next_backup_date()
 
         if today.timestamp() >= next_backup_date.timestamp():
             q_start.put('go', block=False, timeout=None)
@@ -103,111 +104,107 @@ def checking_for_backup_date(loggers, q_start):
         time.sleep(5)
 
 
-def checking_the_backup_start_flag(loggers, q_start, q_progress):
+def checking_the_backup_start_flag(q_start, q_progress):
     while True:
         command = q_start.get(block=True, timeout=None)
         if command == 'go':
             q_progress.put(0, block=False, timeout=None)
-            making_new_backup(loggers, q_progress)
+            making_new_backup(q_progress)
 
 
-def checking_the_backup_frame_update_flag(loggers, main_frame,
-                                          q_progress):
+def checking_the_backup_frame_update_flag(main_frame, q_progress):
     while True:
         progress = q_progress.get(block=True, timeout=None)
         if progress == 0:
-            update_backup_frame(loggers, main_frame, q_progress)
+            update_backup_frame(main_frame, q_progress)
 
 
-def making_new_backup(loggers, q):
+def making_new_backup(q):
     try:
         filepaths = get_list_filepaths(
-            loggers, cfg.get_path_to_files(loggers), [])
+            cfg.get_path_to_files(), [])
 
         if len(filepaths) > 0:
             progress_share = 50 / len(filepaths)
             changes = []
             for path in filepaths:
-                hashsum = compose_file_hashsum(loggers, path)
+                hashsum = compose_file_hashsum(path)
 
-                if not os.path.isfile(cfg.get_path_to_backup(loggers) + str(hashsum)):
+                if not os.path.isfile(cfg.get_path_to_backup() + str(hashsum)):
                     changes.append(path)
                 q.put(progress_share, block=False, timeout=None)
 
-            table_name = compose_table_name(loggers)
-            db.create_table(loggers, table_name, ['hashsum', 'path'])
+            table_name = compose_table_name()
+            db.create_table(table_name, ['hashsum', 'path'])
 
             progress_share = 50 / len(filepaths)
             for path in filepaths:
-                hashsum = compose_file_hashsum(loggers, path)
-                saving_backup_files(loggers, table_name, path, hashsum)
+                hashsum = compose_file_hashsum(path)
+                saving_backup_files(table_name, path, hashsum)
                 if path in changes:
-                    loggers['info'].info(
+                    logging.Logger('info').info(
                         'File {} was saved as {}'.format(path, hashsum))
                 q.put(progress_share, block=False, timeout=None)
 
         progress_share = 100
         q.put(progress_share, block=False, timeout=None)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def delete_old_backup(loggers):
+def delete_old_backup():
     try:
-        today = get_today_date(loggers)
+        today = get_today_date()
         backup_obsolescence_date = today - datetime.timedelta(
-            float(cfg.get_file_retention_period(loggers)))
+            float(cfg.get_file_retention_period()))
 
-        tables = db.select_tables(loggers)
+        tables = db.select_tables()
 
         for table_name in tables:
             if backup_obsolescence_date.timestamp() > float(table_name):
-                db.drop_table(loggers, table_name)
+                db.drop_table(table_name)
                 backup_date = datetime.datetime.fromtimestamp(
                     float(table_name))
                 logger_msg = '{} backup is obsolete and was deleted.'.format(
                     backup_date.strftime('%d.%m.%Y %H:%M'))
-                loggers['info'].info(logger_msg)
+                logging.Logger('info').info(logger_msg)
 
-        filepaths = get_list_filepaths(
-            loggers, cfg.get_path_to_backup(loggers), [])
+        filepaths = get_list_filepaths(cfg.get_path_to_backup(), [])
 
-        tables = db.select_tables(loggers)
+        tables = db.select_tables()
 
         for filepath in filepaths:
             file_name = os.path.basename(filepath)
             for i, table_name in enumerate(tables):
-                match = db.select_file_by_hashsum(
-                    loggers, table_name, file_name)
+                match = db.select_file_by_hashsum(table_name, file_name)
                 if len(match) != 0:
                     break
 
                 if i == len(tables) - 1:
                     os.remove(filepath)
-                    loggers['info'].info(
+                    logging.Logger('info').info(
                         'File {} was deleted.'.format(filepath))
 
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def restoring_backup(loggers, main_frame):
+def restoring_backup(main_frame):
     try:
         q = queue.Queue()
 
         threading.Thread(target=update_restoring_frame,
-                         args=(loggers, main_frame, q,), daemon=True).start()
+                         args=(main_frame, q,), daemon=True).start()
 
         backup_date = main_frame.restoring_frame.option.get()
         table_name = datetime.datetime.strptime(
             backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
 
-        backup_files = db.select_files(loggers, int(table_name))
+        backup_files = db.select_files(int(table_name))
 
-        filepaths = get_list_filepaths(
-            loggers, cfg.get_path_to_files(loggers), [])
+        filepaths = get_list_filepaths(cfg.get_path_to_files(), [])
 
         progress_share = 50
         if len(filepaths) > 0:
@@ -227,14 +224,14 @@ def restoring_backup(loggers, main_frame):
 
         for backup_file in backup_files:
             src_path = '{}{}'.format(
-                cfg.get_path_to_backup(loggers), backup_file.hashsum)
+                cfg.get_path_to_backup(), backup_file.hashsum)
             shutil.copyfile(src_path, backup_file.path)
             q.put(progress_share, block=False, timeout=False)
 
         progress_share = 100
         q.put(progress_share, block=False, timeout=None)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
@@ -243,8 +240,8 @@ def restoring_backup(loggers, main_frame):
 ### ### ### ###
 
 
-def get_backups_list(loggers):
-    tables = db.select_tables(loggers)
+def get_backups_list():
+    tables = db.select_tables()
 
     backups = []
 
@@ -255,41 +252,41 @@ def get_backups_list(loggers):
     return backups
 
 
-def saving_backup_files(loggers, table_name, path, hashsum):
+def saving_backup_files(table_name, path, hashsum):
     file = db.File(hashsum, path)
-    db.insert_into_table(loggers, table_name, file)
-    copy_file(loggers, path, hashsum)
+    db.insert_into_table(table_name, file)
+    copy_file(path, hashsum)
 
 
-def compose_file_hashsum(loggers, path):
+def compose_file_hashsum(path):
     hash = hashlib.md5()
     try:
         with open(path, 'rb') as f:
             for chunk in iter(lambda: f.read(128 * hash.block_size), b''):
                 hash.update(chunk)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return hash.hexdigest()
 
 
-def copy_file(loggers, path, hashsum):
+def copy_file(path, hashsum):
     try:
-        backup_path = cfg.get_path_to_backup(loggers) + hashsum
+        backup_path = cfg.get_path_to_backup() + hashsum
         shutil.copyfile(path, backup_path)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def compose_table_name(loggers):
-    backup_date = get_today_date(loggers)
+def compose_table_name():
+    backup_date = get_today_date()
     table_name = str(backup_date.timestamp()).split('.')[0]
     return table_name
 
 
-def get_list_filepaths(loggers, path, filepaths):
+def get_list_filepaths(path, filepaths):
 
     try:
         if os.path.isfile(path):
@@ -300,55 +297,52 @@ def get_list_filepaths(loggers, path, filepaths):
                 if os.path.isfile(filepath):
                     filepaths.append(filepath)
                 else:
-                    filepaths = get_list_filepaths(
-                        loggers, filepath, filepaths)
+                    filepaths = get_list_filepaths(filepath, filepaths)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return filepaths
 
 
-def get_today_date(loggers):
+def get_today_date():
     today_date = datetime.datetime(1970, 1, 1)
 
     try:
-        tz = pytz.timezone(cfg.get_timezone(loggers))
+        tz = pytz.timezone(cfg.get_timezone())
         if tz == '':
             tz = pytz.timezone('UTC')
         today_date = datetime.datetime.now(tz=tz)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return today_date
 
 
-def compose_backups_dates(loggers):
+def compose_backups_dates():
     backup_dates = {}
 
     try:
-        backup_dates['oldest_backup_date'] = compute_oldest_backup_date(
-            loggers)
+        backup_dates['oldest_backup_date'] = compute_oldest_backup_date()
 
-        backup_dates['latest_backup_date'] = compute_latest_backup_date(
-            loggers)
+        backup_dates['latest_backup_date'] = compute_latest_backup_date()
 
         backup_dates['next_backup_date'] = compute_next_backup_date(
-            loggers, backup_dates['latest_backup_date'])
+            backup_dates['latest_backup_date'])
 
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return backup_dates
 
 
-def compute_oldest_backup_date(loggers):
+def compute_oldest_backup_date():
     oldest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
-        tables = db.select_tables(loggers)
+        tables = db.select_tables()
 
         oldest = 0.0
         for i, table_name in enumerate(tables):
@@ -362,17 +356,17 @@ def compute_oldest_backup_date(loggers):
         oldest_backup_date = datetime.datetime.fromtimestamp(
             float(oldest))
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return oldest_backup_date
 
 
-def compute_latest_backup_date(loggers):
+def compute_latest_backup_date():
     latest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
-        tables = db.select_tables(loggers)
+        tables = db.select_tables()
 
         latest = 0.0
         for i, table_name in enumerate(tables):
@@ -385,29 +379,28 @@ def compute_latest_backup_date(loggers):
         latest_backup_date = datetime.datetime.fromtimestamp(
             float(latest))
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return latest_backup_date
 
 
-def compute_next_backup_date(loggers, latest_backup_date=None):
+def compute_next_backup_date(latest_backup_date=None):
     next_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
         if latest_backup_date != None:
             next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(cfg.get_backup_interval(loggers)))
+                days=float(cfg.get_backup_interval()))
         else:
-            tables = db.select_tables(loggers)
+            tables = db.select_tables()
 
-            latest_backup_date = compute_latest_backup_date(
-                loggers)
+            latest_backup_date = compute_latest_backup_date()
 
             next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(cfg.get_backup_interval(loggers)))
+                days=float(cfg.get_backup_interval()))
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return next_backup_date
@@ -418,54 +411,54 @@ def compute_next_backup_date(loggers, latest_backup_date=None):
 ### ### ### ### ###
 
 
-def make_main_window(loggers, q_start):
+def make_main_window(q_start):
     buttons_params = {
         'backup': {
             'func': start_backuping,
-            'args': [loggers, q_start]
+            'args': [q_start]
         },
         'restoring': {
             'restore': {
                 'func': restoring_backup,
-                'args': [loggers]
+                'args': []
             },
             'copy': {
                 'func': copying_backuped_file,
-                'args': [loggers]
+                'args': []
             }
         },
         'settings': {
             'path_to_backup': {
                 'func': select_path_to_backup,
-                'args': [loggers]
+                'args': []
             },
             'path_to_files': {
                 'func': select_path_to_files,
-                'args': [loggers]
+                'args': []
             },
             'path_to_db': {
                 'func': select_path_to_db,
-                'args': [loggers]
+                'args': []
             },
             'hide_startup': {
                 'func': switch_hide_startup,
-                'args': [loggers, cfg.get_hide_startup_flag(loggers)]
+                'args': [cfg.get_hide_startup_flag()]
             },
             'hide_gui': {
                 'func': hide_gui,
-                'args': [loggers]
+                'args': []
             },
             'save': {
                 'func': update_configs,
-                'args': [loggers]
+                'args': []
             }
         }
     }
 
-    backups = get_backups_list(loggers)
-    configs = cfg.get_config(loggers)
+    backups = get_backups_list()
+    configs = cfg.get_config()
 
-    app = gui.Window(loggers, buttons_params, backups, configs)
+    app = gui.Window(buttons_params, backups, configs)
 
     buttons_params['restoring']['restore']['args'].extend([app.main_frame])
     buttons_params['restoring']['copy']['args'].extend(
@@ -480,12 +473,12 @@ def make_main_window(loggers, q_start):
     buttons_params['settings']['save']['args'].append(
         app.main_frame.settings_frame)
 
-    update_backup_date_labels(loggers, app.main_frame.backup_frame)
+    update_backup_date_labels(app.main_frame.backup_frame)
 
     return app
 
 
-def update_backup_frame(loggers, main_frame, q):
+def update_backup_frame(main_frame, q):
     main_frame.backup_frame.update_progress_bar(0)
     main_frame.backup_frame.hide_buttons_show_progressbar()
 
@@ -495,22 +488,22 @@ def update_backup_frame(loggers, main_frame, q):
         if progress == 100:
             break
 
-    update_backup_date_labels(loggers, main_frame.backup_frame)
+    update_backup_date_labels(main_frame.backup_frame)
 
-    backups = get_backups_list(loggers)
+    backups = get_backups_list()
 
     main_frame.restoring_frame.update_backup_dates(backups)
     main_frame.backup_frame.hide_progress_bar_show_buttons()
 
 
-def update_backup_date_labels(loggers, backup_frame):
-    backup_dates = compose_backups_dates(loggers)
+def update_backup_date_labels(backup_frame):
+    backup_dates = compose_backups_dates()
     backup_frame.set_oldest_backup_date(backup_dates['oldest_backup_date'])
     backup_frame.set_latest_backup_date(backup_dates['latest_backup_date'])
     backup_frame.set_next_backup_date(backup_dates['next_backup_date'])
 
 
-def update_restoring_frame(loggers, main_frame, q):
+def update_restoring_frame(main_frame, q):
     main_frame.restoring_frame.update_progress_bar(0)
     main_frame.restoring_frame.hide_button_show_progressbar()
 
@@ -523,7 +516,7 @@ def update_restoring_frame(loggers, main_frame, q):
     main_frame.restoring_frame.hide_progress_bar_show_button()
 
 
-def select_path_to_backup(loggers, settings_frame):
+def select_path_to_backup(settings_frame):
     path = gui.open_dir_dialog('Выберите папку для хранения резервных копий')
     path = os.path.abspath(path)
     path = os.path.join(path, '')
@@ -532,7 +525,7 @@ def select_path_to_backup(loggers, settings_frame):
         settings_frame.path_to_backup.set(path)
 
 
-def select_path_to_files(loggers, settings_frame):
+def select_path_to_files(settings_frame):
     path = gui.open_dir_dialog('Выберите папку для создания резервной копии')
     path = os.path.abspath(path)
     path = os.path.join(path, '')
@@ -541,7 +534,7 @@ def select_path_to_files(loggers, settings_frame):
         settings_frame.path_to_files.set(path)
 
 
-def select_path_to_db(loggers, settings_frame):
+def select_path_to_db(settings_frame):
     path = gui.open_filedialog()
     path = os.path.abspath(path)
 
@@ -554,13 +547,13 @@ def select_path_to_db(loggers, settings_frame):
 ### ### ### ### ###
 
 
-def start_backuping(loggers, q_start):
+def start_backuping(q_start):
     q_start.put('go', block=False, timeout=None)
 
 
-def update_configs(loggers, settings_frame):
+def update_configs(settings_frame):
     try:
-        config = cfg.get_config(loggers)
+        config = cfg.get_config()
         config['General']['path_to_backup'] = settings_frame.path_to_backup.get()
         config['General']['path_to_files'] = settings_frame.path_to_files.get()
         config['General']['backup_interval'] = settings_frame.backup_interval.get()
@@ -568,18 +561,18 @@ def update_configs(loggers, settings_frame):
         config['DataBase']['path_to_db'] = settings_frame.path_to_db.get()
         config['DataBase']['file_retention_period'] = settings_frame.file_retention_period.get()
 
-        cfg.write_config(loggers, config)
+        cfg.write_config(config)
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def copying_backuped_file(loggers, restoring_frame):
+def copying_backuped_file(restoring_frame):
     backup_date = restoring_frame.option.get()
     table_name = datetime.datetime.strptime(
         backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
 
-    backup_files = db.select_files(loggers, int(table_name))
+    backup_files = db.select_files(int(table_name))
 
     selected_item = restoring_frame.files_table.focus()
     filepath = restoring_frame.files_table.item(selected_item)['values'][0]
@@ -589,7 +582,7 @@ def copying_backuped_file(loggers, restoring_frame):
     for item in backup_files:
         if item.path == filepath:
             backuped_file_path = '{}{}'.format(
-                cfg.get_path_to_backup(loggers), item.hashsum)
+                cfg.get_path_to_backup(), item.hashsum)
 
     filename = os.path.basename(filepath)
 
@@ -598,8 +591,8 @@ def copying_backuped_file(loggers, restoring_frame):
     shutil.copyfile(backuped_file_path, os.path.join(dest_dir, filename))
 
 
-def switch_hide_startup(loggers, hide_startup_flag):
-    config = cfg.get_config(loggers)
+def switch_hide_startup(hide_startup_flag):
+    config = cfg.get_config()
     if config['GUI']['hide_startup'] == '0':
         config['GUI']['hide_startup'] = '1'
         hide_startup_flag = '1'
@@ -607,12 +600,12 @@ def switch_hide_startup(loggers, hide_startup_flag):
         config['GUI']['hide_startup'] = '0'
         hide_startup_flag = '0'
 
-    cfg.write_config(loggers, config)
+    cfg.write_config(config)
 
 
-def hide_gui(loggers, app):
-    config = cfg.get_config(loggers)
+def hide_gui(app):
+    config = cfg.get_config()
     config['GUI']['show_gui'] = '0'
-    cfg.write_config(loggers, config)
+    cfg.write_config(config)
 
     app.withdraw()

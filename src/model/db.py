@@ -5,16 +5,17 @@ import sys
 import sqlite3
 
 import src.model.cfg as cfg
+import src.model.logging as logging
 
 
-def db_init(loggers):
+def db_init():
     try:
-        if not os.path.isfile(cfg.get_path_to_db(loggers)):
-            loggers['info'].info('Database has just been created and is empty')
-        db_con = sqlite3.connect(cfg.get_path_to_db(loggers))
+        if not os.path.isfile(cfg.get_path_to_db()):
+            logging.Logger('info').info('Database has just been created and is empty')
+        db_con = sqlite3.connect(cfg.get_path_to_db())
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
@@ -27,9 +28,9 @@ class File:
         self.path = path
 
 
-def create_table(loggers, table_name, col_names):
+def create_table(table_name, col_names):
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         cur.execute('CREATE TABLE "{}" ({})'.format(
@@ -37,13 +38,13 @@ def create_table(loggers, table_name, col_names):
         db_con.commit()
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def insert_into_table(loggers, table_name, file):
+def insert_into_table(table_name, file):
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         query = 'INSERT INTO "{}" VALUES (?, ?)'.format(table_name)
@@ -52,13 +53,13 @@ def insert_into_table(loggers, table_name, file):
         db_con.commit()
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def drop_table(loggers, table_name):
+def drop_table(table_name):
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         query = 'DROP TABLE "{}"'.format(table_name)
@@ -67,55 +68,55 @@ def drop_table(loggers, table_name):
         db_con.commit()
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
 
-def select_files(loggers, table_name):
+def select_files(table_name):
     files = []
 
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         query = 'SELECT * FROM "{}"'.format(table_name)
         for row in cur.execute(query):
-            file = __parse_row(loggers, row)
+            file = __parse_row(row)
             files.append(file)
 
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return files
 
 
-def select_file_by_hashsum(loggers, table_name, hashsum):
+def select_file_by_hashsum(table_name, hashsum):
     files = []
 
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         query = 'SELECT * FROM "{}" WHERE hashsum = ?'.format(table_name)
         for row in cur.execute(query, [hashsum]):
-            file = __parse_row(loggers, row)
+            file = __parse_row(row)
             files.append(file)
 
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return files
 
 
-def select_tables(loggers):
+def select_tables():
     tables = []
 
     try:
-        db_con = __connect(loggers)
+        db_con = __connect()
         cur = db_con.cursor()
 
         query = 'SELECT name FROM sqlite_master WHERE type="table"'
@@ -125,17 +126,17 @@ def select_tables(loggers):
 
         db_con.close()
     except Exception:
-        loggers['critical'].exception('Program is terminated')
+        logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
     return tables
 
 
-def __parse_row(loggers, row):
+def __parse_row(row):
     file = File(row[0], row[1])
     return file
 
 
-def __connect(loggers):
-    con = sqlite3.connect(cfg.get_path_to_db(loggers))
+def __connect():
+    con = sqlite3.connect(cfg.get_path_to_db())
     return con
