@@ -524,7 +524,7 @@ def update_restoring_frame(loggers, main_frame, q):
 
 
 def select_path_to_backup(loggers, settings_frame):
-    path = gui.open_dir_dialog()
+    path = gui.open_dir_dialog('Выберите папку для хранения резервных копий')
     path = os.path.abspath(path)
     path = os.path.join(path, '')
 
@@ -533,7 +533,7 @@ def select_path_to_backup(loggers, settings_frame):
 
 
 def select_path_to_files(loggers, settings_frame):
-    path = gui.open_dir_dialog()
+    path = gui.open_dir_dialog('Выберите папку для создания резервной копии')
     path = os.path.abspath(path)
     path = os.path.join(path, '')
 
