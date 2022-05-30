@@ -4,7 +4,7 @@ import os
 import sys
 import configparser
 
-import src.model.logging as logging
+from src import logging
 
 
 def get_path_to_backup():

@@ -7,7 +7,7 @@ import tkinter.filedialog as filedialog
 import threading
 import datetime
 
-import src.model.db as db
+import db
 
 
 VERSION_ = '0.4.0-beta'

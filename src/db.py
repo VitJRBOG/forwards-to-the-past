@@ -4,8 +4,8 @@ import os
 import sys
 import sqlite3
 
-import src.model.cfg as cfg
-import src.model.logging as logging
+import cfg
+from src import logging
 
 
 def db_init():

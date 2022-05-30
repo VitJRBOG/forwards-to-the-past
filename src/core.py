@@ -11,11 +11,11 @@ import shutil
 import pytz
 import watchdog.observers
 
-import src.model.cfg as cfg
-import src.model.db as db
-import src.model.logging as logging
-import src.view.gui as gui
-import src.controller.event_handler as event_handler
+import cfg
+import db
+from src import logging
+import gui
+import event_handler
 
 
 def run():

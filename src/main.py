@@ -2,8 +2,8 @@
 
 import os
 
-import src.model.logging as logging
-import controller.core as core
+from src import logging
+import core
 
 
 def __main():
