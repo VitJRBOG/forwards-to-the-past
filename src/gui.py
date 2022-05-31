@@ -10,7 +10,7 @@ import datetime
 import db
 
 
-VERSION_ = '0.4.0-beta'
+VERSION_ = '0.5.0-beta'
 
 
 class Window(tk.Tk):
@@ -401,8 +401,8 @@ class Entry(tk.Entry):
         self.place(x=position[0], y=position[1])
 
 
-def open_filedialog():
-    path = filedialog.askopenfilename()
+def open_filedialog(title):
+    path = filedialog.askopenfilename(title=title)
 
     return path
 

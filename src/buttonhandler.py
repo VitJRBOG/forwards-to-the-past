@@ -59,7 +59,7 @@ def select_path_to_files(settings_frame):
 
 def select_path_to_db(settings_frame):
     try:
-        path = gui.open_filedialog()
+        path = gui.open_filedialog('Выберите файл базы данных')
         path = os.path.abspath(path)
 
         if path != '':
