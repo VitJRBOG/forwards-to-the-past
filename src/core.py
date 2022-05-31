@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os
+import sys
 import threading
 import queue
 import time
@@ -14,6 +15,7 @@ import gui
 import buttonhandler
 import painter
 import event_handler
+from src import logging
 
 
 def run():
@@ -43,35 +45,43 @@ def initialization():
 
 
 def start_with_gui(q_start, q_process):
-    app = make_main_window(q_start)
+    try:
+        app = make_main_window(q_start)
 
-    config = cfg.get_config()
-    config['GUI']['show_gui'] = '1'
-    cfg.write_config(config)
+        config = cfg.get_config()
+        config['GUI']['show_gui'] = '1'
+        cfg.write_config(config)
 
-    config_modifications_observing(app, [config])
+        config_modifications_observing(app, [config])
 
-    initialization()
+        initialization()
 
-    if config['GUI']['hide_startup'] == '1':
-        buttonhandler.hide_gui(app)
+        if config['GUI']['hide_startup'] == '1':
+            buttonhandler.hide_gui(app)
 
-    threading.Thread(target=checking_the_backup_frame_update_flag,
-                     args=(app.main_frame, q_process,), daemon=True).start()
-    threading.Thread(target=checking_the_backup_start_flag, args=(
-        q_start, q_process,), daemon=True).start()
-    threading.Thread(target=checking_for_backup_date, args=(
-        q_start,), daemon=True).start()
+        threading.Thread(target=checking_the_backup_frame_update_flag,
+                        args=(app.main_frame, q_process,), daemon=True).start()
+        threading.Thread(target=checking_the_backup_start_flag, args=(
+            q_start, q_process,), daemon=True).start()
+        threading.Thread(target=checking_for_backup_date, args=(
+            q_start,), daemon=True).start()
 
-    app.mainloop()
+        app.mainloop()
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def config_modifications_observing(app, for_config):
-    e = event_handler.EventHandler(
-        checking_config_modifications, [app, for_config])
-    observer = watchdog.observers.Observer()
-    observer.schedule(e, path='./', recursive=False)
-    observer.start()
+    try:
+        e = event_handler.EventHandler(
+            checking_config_modifications, [app, for_config])
+        observer = watchdog.observers.Observer()
+        observer.schedule(e, path='./', recursive=False)
+        observer.start()
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def checking_config_modifications(app, for_config):

@@ -120,27 +120,39 @@ def restoring_backup(main_frame, q):
 
 
 def get_backups_list():
-    tables = db.select_tables()
+    try:
+        tables = db.select_tables()
 
-    backups = []
+        backups = []
 
-    for table_name in tables:
-        backup = datetime.datetime.fromtimestamp(float(table_name))
-        backups.append(backup.strftime('%d.%m.%Y %H:%M:%S'))
+        for table_name in tables:
+            backup = datetime.datetime.fromtimestamp(float(table_name))
+            backups.append(backup.strftime('%d.%m.%Y %H:%M:%S'))
 
-    return backups
+        return backups
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def saving_backup_files(table_name, path, hashsum):
-    file = db.File(hashsum, path)
-    db.insert_into_table(table_name, file)
-    tools.copy_file(path, hashsum)
+    try:
+        file = db.File(hashsum, path)
+        db.insert_into_table(table_name, file)
+        tools.copy_file(path, hashsum)
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def compose_table_name():
-    backup_date = tools.get_today_date()
-    table_name = str(backup_date.timestamp()).split('.')[0]  # type: ignore
-    return table_name
+    try:
+        backup_date = tools.get_today_date()
+        table_name = str(backup_date.timestamp()).split('.')[0]  # type: ignore
+        return table_name
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def compose_backups_dates():
