@@ -125,7 +125,7 @@ def make_main_window(q_start):
         },
         'restoring': {
             'restore': {
-                'func': backuper.restoring_backup,
+                'func': buttonhandler.start_backup_restoring,
                 'args': []
             },
             'copy': {
@@ -166,8 +166,7 @@ def make_main_window(q_start):
 
     app = gui.Window(buttons_params, backups, configs)
 
-    buttons_params['restoring']['restore']['args'].extend(
-        [app.main_frame, painter.update_restoring_frame])
+    buttons_params['restoring']['restore']['args'].extend([app.main_frame])
     buttons_params['restoring']['copy']['args'].extend(
         [app.main_frame.restoring_frame])
     buttons_params['settings']['path_to_backup']['args'].append(

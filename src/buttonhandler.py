@@ -2,15 +2,25 @@ import os
 import sys
 import datetime
 import shutil
+import queue
+import threading
 
 import gui
 import cfg
 import db
-from src import logging
+import backuper
+from src import logging, painter
 
 
 def start_backuping(q_start):
     q_start.put('go', block=False, timeout=None)
+
+
+def start_backup_restoring(main_frame):
+    q = queue.Queue()
+    threading.Thread(target=painter.update_restoring_frame,
+                     args=(main_frame, q,), daemon=True).start()
+    backuper.restoring_backup(main_frame, q)
 
 
 def select_path_to_backup(settings_frame):

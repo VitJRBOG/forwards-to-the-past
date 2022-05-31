@@ -1,8 +1,6 @@
 import os
 import sys
 import datetime
-import queue
-import threading
 import shutil
 
 import tools
@@ -82,13 +80,8 @@ def delete_old_backup():
         sys.exit()
 
 
-def restoring_backup(main_frame, update_restoring_frame_func):
+def restoring_backup(main_frame, q):
     try:
-        q = queue.Queue()
-
-        threading.Thread(target=update_restoring_frame_func,
-                         args=(main_frame, q,), daemon=True).start()
-
         backup_date = main_frame.restoring_frame.option.get()
         table_name = datetime.datetime.strptime(
             backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
