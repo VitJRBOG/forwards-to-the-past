@@ -10,33 +10,51 @@ from src import logging
 
 
 def making_new_backup(q):
+    filepaths = tools.get_list_filepaths(cfg.get_path_to_files(), [])
+
+    if len(filepaths) > 0:
+        progress_share = 50 / len(filepaths)
+        new_backup_files = __compose_new_backup_files_list(q, filepaths)
+        table_name = __create_new_backup_info_table()
+        __create_new_backup_files(q, filepaths, table_name, new_backup_files)                
+
+    progress_share = 100
+    q.put(progress_share, block=False, timeout=None)
+
+
+def __compose_new_backup_files_list(q, filepaths):
     try:
-        filepaths = tools.get_list_filepaths(cfg.get_path_to_files(), [])
+        new_backup_files = []
+        progress_share = 50 / len(filepaths)
+        for path in filepaths:
+            hashsum = tools.compose_file_hashsum(path)
+            if not os.path.isfile(cfg.get_path_to_backup() + str(hashsum)):
+                new_backup_files.append(path)
+            __put_progress_date_to_progressbar(q, progress_share)
 
-        if len(filepaths) > 0:
-            progress_share = 50 / len(filepaths)
-            changes = []
-            for path in filepaths:
-                hashsum = tools.compose_file_hashsum(path)
+        return new_backup_files
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
-                if not os.path.isfile(cfg.get_path_to_backup() + str(hashsum)):
-                    changes.append(path)
-                q.put(progress_share, block=False, timeout=None)
 
-            table_name = compose_table_name()
-            db.create_table(table_name, ['hashsum', 'path'])
+def __create_new_backup_info_table():
+    table_name = compose_table_name()
+    db.create_table(table_name, ['hashsum', 'path'])
 
-            progress_share = 50 / len(filepaths)
-            for path in filepaths:
-                hashsum = tools.compose_file_hashsum(path)
-                saving_backup_files(table_name, path, hashsum)
-                if path in changes:
-                    logging.Logger('info').info(
-                        'File {} was saved as {}'.format(path, hashsum))
-                q.put(progress_share, block=False, timeout=None)
+    return table_name
 
-        progress_share = 100
-        q.put(progress_share, block=False, timeout=None)
+
+def __create_new_backup_files(q, filepaths, table_name, new_backup_files):
+    try:
+        progress_share = 50 / len(filepaths)
+        for path in filepaths:
+            hashsum = tools.compose_file_hashsum(path)
+            saving_backup_files(table_name, path, hashsum)
+            if path in new_backup_files:
+                logging.Logger('info').info(
+                    'File {} was saved as {}'.format(path, hashsum))
+            __put_progress_date_to_progressbar(q, progress_share)
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
@@ -117,6 +135,10 @@ def restoring_backup(main_frame, q):
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
+
+
+def __put_progress_date_to_progressbar(q, progress_share):
+    q.put(progress_share, block=False, timeout=None)
 
 
 def get_backups_list():
