@@ -10,7 +10,7 @@ import datetime
 import db
 
 
-VERSION_ = '0.5.0-beta'
+VERSION_ = '0.5.1-beta'
 
 
 class Window(tk.Tk):

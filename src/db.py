@@ -138,5 +138,5 @@ def __parse_row(row):
 
 
 def __connect():
-    con = sqlite3.connect(cfg.get_path_to_db())
+    con = sqlite3.connect(cfg.get_path_to_db(), timeout=60)
     return con
