@@ -39,10 +39,20 @@ def __compose_new_backup_files_list(q, filepaths):
 
 
 def __create_new_backup_info_table():
-    table_name = compose_table_name()
+    table_name = __compose_table_name()
     db.create_table(table_name, ['hashsum', 'path'])
 
     return table_name
+
+
+def __compose_table_name():
+    try:
+        backup_date = tools.get_today_date()
+        table_name = str(backup_date.timestamp()).split('.')[0]
+        return table_name
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
 
 
 def __create_new_backup_files(q, filepaths, table_name, new_backup_files):
@@ -50,11 +60,21 @@ def __create_new_backup_files(q, filepaths, table_name, new_backup_files):
         progress_share = 50 / len(filepaths)
         for path in filepaths:
             hashsum = tools.compose_file_hashsum(path)
-            saving_backup_files(table_name, path, hashsum)
+            __saving_backup_files(table_name, path, hashsum)
             if path in new_backup_files:
                 logging.Logger('info').info(
                     'File {} was saved as {}'.format(path, hashsum))
             __put_progress_date_to_progressbar(q, progress_share)
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
+
+
+def __saving_backup_files(table_name, path, hashsum):
+    try:
+        file = db.File(hashsum, path)
+        db.insert_into_table(table_name, file)
+        tools.copy_file(path, hashsum)
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
@@ -172,45 +192,40 @@ def get_backup_dates_list():
         sys.exit()
 
 
-def saving_backup_files(table_name, path, hashsum):
-    try:
-        file = db.File(hashsum, path)
-        db.insert_into_table(table_name, file)
-        tools.copy_file(path, hashsum)
-    except Exception:
-        logging.Logger('critical').exception('Program is terminated')
-        sys.exit()
-
-
-def compose_table_name():
-    try:
-        backup_date = tools.get_today_date()
-        table_name = str(backup_date.timestamp()).split('.')[0]  # type: ignore
-        return table_name
-    except Exception:
-        logging.Logger('critical').exception('Program is terminated')
-        sys.exit()
-
-
 def compose_backups_dates():
-    backup_dates = {}
-
     try:
-        backup_dates['oldest_backup_date'] = compute_oldest_backup_date()
-
-        backup_dates['latest_backup_date'] = compute_latest_backup_date()
-
+        backup_dates = {}
+        backup_dates['oldest_backup_date'] = __compute_oldest_backup_date()
+        backup_dates['latest_backup_date'] = __compute_latest_backup_date()
         backup_dates['next_backup_date'] = compute_next_backup_date(
             backup_dates['latest_backup_date'])
+        return backup_dates
 
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
 
-    return backup_dates
+
+def compute_next_backup_date(latest_backup_date=None):
+    next_backup_date = datetime.datetime(1970, 1, 1)
+
+    try:
+        if latest_backup_date != None:
+            next_backup_date = latest_backup_date + datetime.timedelta(
+                days=float(cfg.get_backup_interval()))
+        else:
+            latest_backup_date = __compute_latest_backup_date()
+
+            next_backup_date = latest_backup_date + datetime.timedelta(
+                days=float(cfg.get_backup_interval()))
+    except Exception:
+        logging.Logger('critical').exception('Program is terminated')
+        sys.exit()
+
+    return next_backup_date
 
 
-def compute_oldest_backup_date():
+def __compute_oldest_backup_date():
     oldest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
@@ -234,7 +249,7 @@ def compute_oldest_backup_date():
     return oldest_backup_date
 
 
-def compute_latest_backup_date():
+def __compute_latest_backup_date():
     latest_backup_date = datetime.datetime(1970, 1, 1)
 
     try:
@@ -255,24 +270,3 @@ def compute_latest_backup_date():
         sys.exit()
 
     return latest_backup_date
-
-
-def compute_next_backup_date(latest_backup_date=None):
-    next_backup_date = datetime.datetime(1970, 1, 1)
-
-    try:
-        if latest_backup_date != None:
-            next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(cfg.get_backup_interval()))
-        else:
-            tables = db.select_tables()
-
-            latest_backup_date = compute_latest_backup_date()
-
-            next_backup_date = latest_backup_date + datetime.timedelta(
-                days=float(cfg.get_backup_interval()))
-    except Exception:
-        logging.Logger('critical').exception('Program is terminated')
-        sys.exit()
-
-    return next_backup_date
