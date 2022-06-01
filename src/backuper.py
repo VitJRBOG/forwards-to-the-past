@@ -60,42 +60,48 @@ def __create_new_backup_files(q, filepaths, table_name, new_backup_files):
         sys.exit()
 
 
-def delete_old_backup():
+def deleting_old_backups():
     try:
-        today = tools.get_today_date()
-        backup_obsolescence_date = today - datetime.timedelta(
-            float(cfg.get_file_retention_period()))
-
         tables = db.select_tables()
-
         for table_name in tables:
-            if backup_obsolescence_date.timestamp() > float(table_name):
-                db.drop_table(table_name)
-                backup_date = datetime.datetime.fromtimestamp(
-                    float(table_name))
-                logger_msg = '{} backup is obsolete and was deleted.'.format(
-                    backup_date.strftime('%d.%m.%Y %H:%M'))
-                logging.Logger('info').info(logger_msg)
-
+            if __backup_is_obsoleted(table_name):
+                __delete_old_backup_table_info(table_name)
         filepaths = tools.get_list_filepaths(cfg.get_path_to_backup(), [])
-
-        tables = db.select_tables()
-
-        for filepath in filepaths:
-            file_name = os.path.basename(filepath)
-            for i, table_name in enumerate(tables):
-                match = db.select_file_by_hashsum(table_name, file_name)
-                if len(match) != 0:
-                    break
-
-                if i == len(tables) - 1:
-                    os.remove(filepath)
-                    logging.Logger('info').info(
-                        'File {} was deleted.'.format(filepath))
+        remaining_tables = db.select_tables()
+        __delete_old_backup_files(filepaths, remaining_tables)
 
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
+
+
+def __backup_is_obsoleted(table_name):
+    today = tools.get_today_date()
+    backup_obsolescence_date = today - datetime.timedelta(
+        float(cfg.get_file_retention_period()))
+    return backup_obsolescence_date.timestamp() > float(table_name)
+
+
+def __delete_old_backup_table_info(table_name):
+    db.drop_table(table_name)
+    backup_date = datetime.datetime.fromtimestamp(float(table_name))
+    logger_msg = '{} backup is obsolete and was deleted.'.format(
+        backup_date.strftime('%d.%m.%Y %H:%M'))
+    logging.Logger('info').info(logger_msg)
+
+
+def __delete_old_backup_files(filepaths, remaining_tables):
+    for filepath in filepaths:
+        file_name = os.path.basename(filepath)
+        for i, table_name in enumerate(remaining_tables):
+            match = db.select_file_by_hashsum(table_name, file_name)
+            if len(match) != 0:
+                break
+
+            if i == len(remaining_tables) - 1:
+                os.remove(filepath)
+                logging.Logger('info').info(
+                    'File {} was deleted.'.format(filepath))
 
 
 def restoring_backup(main_frame, q):

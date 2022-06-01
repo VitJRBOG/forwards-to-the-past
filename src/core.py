@@ -101,7 +101,7 @@ def show_gui(app):
 
 def checking_for_backup_date(q_start):
     while True:
-        backuper.delete_old_backup()
+        backuper.deleting_old_backups()
 
         today = tools.get_today_date()
         next_backup_date = backuper.compute_next_backup_date()
