@@ -13,7 +13,7 @@ def update_backup_frame(main_frame, q):
 
     update_backup_date_labels(main_frame.backup_frame)
 
-    backups = backuper.get_backups_list()
+    backups = backuper.get_backup_dates_list()
 
     main_frame.restoring_frame.update_backup_dates(backups)
     main_frame.backup_frame.hide_progress_bar_show_buttons()

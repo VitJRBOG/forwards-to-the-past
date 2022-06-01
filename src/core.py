@@ -171,7 +171,7 @@ def make_main_window(q_start):
         }
     }
 
-    backups = backuper.get_backups_list()
+    backups = backuper.get_backup_dates_list()
     configs = cfg.get_config()
 
     app = gui.Window(buttons_params, backups, configs)

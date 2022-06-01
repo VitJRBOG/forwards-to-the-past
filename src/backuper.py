@@ -156,7 +156,7 @@ def __put_progress_date_to_progressbar(q, progress_share):
     q.put(progress_share, block=False, timeout=None)
 
 
-def get_backups_list():
+def get_backup_dates_list():
     try:
         tables = db.select_tables()
 
