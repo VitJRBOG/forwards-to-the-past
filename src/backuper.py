@@ -107,40 +107,49 @@ def __delete_old_backup_files(filepaths, remaining_tables):
 def restoring_backup(main_frame, q):
     try:
         backup_date = main_frame.restoring_frame.option.get()
-        table_name = datetime.datetime.strptime(
-            backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
+        backup_files = __fetch_backup_files(backup_date)
+        __removing_files_from_source_dir(q)
+        __copying_backup_files_to_source_dir(q, backup_files)
 
-        backup_files = db.select_files(int(table_name))  # type: ignore
-
-        filepaths = tools.get_list_filepaths(cfg.get_path_to_files(), [])
-
-        progress_share = 50
-        if len(filepaths) > 0:
-            progress_share = 50 / len(filepaths)
-        else:
-            q.put(progress_share, block=False, timeout=False)
-
-        for file_path in filepaths:
-            os.remove(file_path)
-            q.put(progress_share, block=False, timeout=False)
-
-        progress_share = 50
-        if len(backup_files) > 0:
-            progress_share = 50 / len(backup_files)
-        else:
-            q.put(progress_share, block=False, timeout=False)
-
-        for backup_file in backup_files:
-            src_path = '{}{}'.format(
-                cfg.get_path_to_backup(), backup_file.hashsum)
-            shutil.copyfile(src_path, backup_file.path)
-            q.put(progress_share, block=False, timeout=False)
-
-        progress_share = 100
-        q.put(progress_share, block=False, timeout=None)
+        __put_progress_date_to_progressbar(q, progress_share=100)
     except Exception:
         logging.Logger('critical').exception('Program is terminated')
         sys.exit()
+
+
+def __fetch_backup_files(backup_date):
+    table_name = datetime.datetime.strptime(
+        backup_date, '%d.%m.%Y %H:%M:%S').timestamp()
+    backup_files = db.select_files(int(table_name))
+
+    return backup_files
+
+
+def __removing_files_from_source_dir(q):
+    filepaths = tools.get_list_filepaths(cfg.get_path_to_files(), [])
+    progress_share = 50
+    if len(filepaths) > 0:
+        progress_share = 50 / len(filepaths)
+    else:
+        __put_progress_date_to_progressbar(q, progress_share)
+
+    for file_path in filepaths:
+        os.remove(file_path)
+        __put_progress_date_to_progressbar(q, progress_share)
+
+
+def __copying_backup_files_to_source_dir(q, backup_files):
+    progress_share = 50
+    if len(backup_files) > 0:
+        progress_share = 50 / len(backup_files)
+    else:
+        __put_progress_date_to_progressbar(q, progress_share)
+
+    for backup_file in backup_files:
+        src_path = '{}{}'.format(
+            cfg.get_path_to_backup(), backup_file.hashsum)
+        shutil.copyfile(src_path, backup_file.path)
+        __put_progress_date_to_progressbar(q, progress_share)
 
 
 def __put_progress_date_to_progressbar(q, progress_share):
